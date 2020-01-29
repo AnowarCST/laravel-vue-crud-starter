@@ -29,9 +29,9 @@ class CategoryController extends BaseController
      */
     public function index()
     {
-        $tags = $this->category->latest()->paginate(10);
+        $categories = $this->category->latest()->paginate(10);
 
-        return $this->sendResponse($tags, 'Category list');
+        return $this->sendResponse($categories, 'Category list');
     }
 
     /**

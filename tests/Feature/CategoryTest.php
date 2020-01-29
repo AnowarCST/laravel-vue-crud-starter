@@ -14,7 +14,7 @@ class CategoryTest extends TestCase
      *
      * @return void
      */
-    public function testProfileData()
+    public function testCategoryList()
     {
         $user = factory(User::class)->create();
 
