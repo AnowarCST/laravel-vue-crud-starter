@@ -1,1 +1,40 @@
-//
+// Fonts
+@import url('https://fonts.googleapis.com/css?family=Nunito');
+
+// Variables
+@import 'variables';
+
+// Bootstrap
+@import '~bootstrap/scss/bootstrap';
+@import '~admin-lte/dist/css/adminlte.css';
+
+// Font Awesome
+@import "~@fortawesome/fontawesome-free/scss/fontawesome.scss";
+@import "~@fortawesome/fontawesome-free/scss/solid.scss";
+@import "~@fortawesome/fontawesome-free/scss/regular.scss";
+@import "~@fortawesome/fontawesome-free/scss/brands.scss";
+
+// sweet alert
+@import 'sweetalert2/src/sweetalert2.scss';
+// import 'sweetalert2/src/sweetalert2.scss'
+
+.navbar-laravel {
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.blue {color: $blue;}
+.indigo {color: $indigo;}
+.purple {color: $purple;}
+.pink {color: $pink;}
+.red {color: $red;}
+.orange {color: $orange;}
+.yellow {color: $yellow;}
+.green {color: $green;}
+.teal {color: $teal;}
+.cyan {color: $cyan;}
+
+
+// .content-header{
+//   padding: 10px 0.5rem !important;
+// }

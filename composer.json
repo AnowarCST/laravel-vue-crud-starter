@@ -11,6 +11,7 @@
         "php": "^7.2",
         "fideloper/proxy": "^4.0",
         "laravel/framework": "^6.2",
+        "laravel/passport": "^8.0",
         "laravel/tinker": "^2.0"
     },
     "require-dev": {
