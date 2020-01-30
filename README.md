@@ -39,16 +39,17 @@ A very simple Laravel+Vue Curd starter template
 - Update `.env` and set your database credentials
 - `php artisan migrate`
 - `php artisan db:seed`
+- `php artisan passport:install`
 - `npm install`
 - `npm run dev`
 - `php artisan serve`
 
 ## Unit Test
 
-#### To run test case
+#### run PHPUnit
 
 ```bash
-# run PHPUnit
+# run PHPUnit all test cases
 vendor/bin/phpunit
 # or Feature test only
 vendor/bin/phpunit --testsuite Feature
@@ -60,6 +61,7 @@ vendor/bin/phpunit --testsuite Feature
 # reports is a directory name
 vendor/bin/phpunit --coverage-html reports/
 ```
+A `reports` directory has been created for code coverage report. Open the dashboard.html.
 
 ## License
 
