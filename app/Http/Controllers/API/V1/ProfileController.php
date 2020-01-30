@@ -8,7 +8,7 @@ use App\Http\Requests\Users\ProfileUpdateRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class ProfileController extends BaseController
+class ProfileController extends Controller
 {
     /**
      * Create a new controller instance.
@@ -27,7 +27,12 @@ class ProfileController extends BaseController
      */
     public function profile()
     {
-        return $this->sendResponse(auth('api')->user(), 'User Profile');
+        $response = [
+            'success' => true,
+            'data'    => auth('api')->user(),
+            'message' => 'User Profile',
+        ];
+        return response()->json($response, 200);
     }
 
 
@@ -45,7 +50,12 @@ class ProfileController extends BaseController
 
         $user->update($request->all());
 
-        return $this->sendResponse($user, 'Profile has been updated');
+        $response = [
+            'success' => true,
+            'data'    => $user,
+            'message' => 'Profile has been updated',
+        ];
+        return response()->json($response, 200);
     }
 
 
@@ -60,6 +70,11 @@ class ProfileController extends BaseController
     {
         User::find(auth('api')->user()->id)->update(['password' => Hash::make($request->new_password)]);
 
-        return $this->sendResponse([], 'Password Has been updated');
+        $response = [
+            'success' => true,
+            'data'    => [],
+            'message' => 'Password Has been updated',
+        ];
+        return response()->json($response, 200);
     }
 }
