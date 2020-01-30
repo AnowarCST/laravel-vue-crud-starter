@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d62f0a9fbfd7c151e70f9a88d0461ab1",
+    "content-hash": "7a273cb4f6ebce1a2ec81f2892ec1879",
     "packages": [
         {
             "name": "defuse/php-encryption",
@@ -1005,16 +1005,16 @@
         },
         {
             "name": "laravel/passport",
-            "version": "v8.3.0",
+            "version": "v8.3.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/passport.git",
-                "reference": "e3d3c867d696c95e1cda7817533924db0f988007"
+                "reference": "98456cb16efd2ef7b41797e0a8559c9d8b4112f8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/passport/zipball/e3d3c867d696c95e1cda7817533924db0f988007",
-                "reference": "e3d3c867d696c95e1cda7817533924db0f988007",
+                "url": "https://api.github.com/repos/laravel/passport/zipball/98456cb16efd2ef7b41797e0a8559c9d8b4112f8",
+                "reference": "98456cb16efd2ef7b41797e0a8559c9d8b4112f8",
                 "shasum": ""
             },
             "require": {
@@ -1073,40 +1073,40 @@
                 "oauth",
                 "passport"
             ],
-            "time": "2020-01-28T21:17:01+00:00"
+            "time": "2020-01-29T13:25:24+00:00"
         },
         {
             "name": "laravel/tinker",
-            "version": "v1.0.10",
+            "version": "v2.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/tinker.git",
-                "reference": "ad571aacbac1539c30d480908f9d0c9614eaf1a7"
+                "reference": "d8ce361f2fd979c03e5f66c79d4a95a1c1e68640"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/tinker/zipball/ad571aacbac1539c30d480908f9d0c9614eaf1a7",
-                "reference": "ad571aacbac1539c30d480908f9d0c9614eaf1a7",
+                "url": "https://api.github.com/repos/laravel/tinker/zipball/d8ce361f2fd979c03e5f66c79d4a95a1c1e68640",
+                "reference": "d8ce361f2fd979c03e5f66c79d4a95a1c1e68640",
                 "shasum": ""
             },
             "require": {
-                "illuminate/console": "~5.1|^6.0",
-                "illuminate/contracts": "~5.1|^6.0",
-                "illuminate/support": "~5.1|^6.0",
-                "php": ">=5.5.9",
-                "psy/psysh": "0.7.*|0.8.*|0.9.*",
-                "symfony/var-dumper": "~3.0|~4.0"
+                "illuminate/console": "^6.0|^7.0",
+                "illuminate/contracts": "^6.0|^7.0",
+                "illuminate/support": "^6.0|^7.0",
+                "php": "^7.2",
+                "psy/psysh": "^0.9",
+                "symfony/var-dumper": "^4.0|^5.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "~4.0|~5.0"
+                "phpunit/phpunit": "^8.0"
             },
             "suggest": {
-                "illuminate/database": "The Illuminate Database package (~5.1)."
+                "illuminate/database": "The Illuminate Database package (^6.0|^7.0)."
             },
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "1.0-dev"
+                    "dev-master": "2.x-dev"
                 },
                 "laravel": {
                     "providers": [
@@ -1136,7 +1136,7 @@
                 "laravel",
                 "psysh"
             ],
-            "time": "2019-08-07T15:10:45+00:00"
+            "time": "2020-01-14T16:58:39+00:00"
         },
         {
             "name": "lcobucci/jwt",
@@ -5260,16 +5260,16 @@
         },
         {
             "name": "scrivo/highlight.php",
-            "version": "v9.17.1.1",
+            "version": "v9.18.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/scrivo/highlight.php.git",
-                "reference": "abe5a2f0b21de310c9fccf4daafeb93e597ec7bc"
+                "reference": "0e7860058231b5bc843d1f5ac5c091be6b15b2d1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/scrivo/highlight.php/zipball/abe5a2f0b21de310c9fccf4daafeb93e597ec7bc",
-                "reference": "abe5a2f0b21de310c9fccf4daafeb93e597ec7bc",
+                "url": "https://api.github.com/repos/scrivo/highlight.php/zipball/0e7860058231b5bc843d1f5ac5c091be6b15b2d1",
+                "reference": "0e7860058231b5bc843d1f5ac5c091be6b15b2d1",
                 "shasum": ""
             },
             "require": {
@@ -5324,7 +5324,7 @@
                 "highlight.php",
                 "syntax"
             ],
-            "time": "2020-01-27T08:38:19+00:00"
+            "time": "2020-01-29T15:18:09+00:00"
         },
         {
             "name": "sebastian/code-unit-reverse-lookup",
