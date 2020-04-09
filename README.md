@@ -45,6 +45,21 @@ A very simple Laravel 6 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 - `npm run dev`
 - `php artisan serve`
 
+## Install with Docker
+
+- `git clone https://github.com/AnowarCST/laravel-vue-crud-starter.git`
+- `cd laravel-vue-crud-starter/`
+- `npm install`
+- `docker-compose up -d`
+- `docker exec -it vue-starter /bin/bash`
+- `php artisan migrate`
+- `php artisan db:seed`
+- `php artisan passport:install`
+- Application http://localhost:8008/
+- Adminer for Database http://localhost:8080/
+- host: yourIP:3307, user: root, Password: 123456
+
+
 ## Unit Test
 
 #### run PHPUnit
