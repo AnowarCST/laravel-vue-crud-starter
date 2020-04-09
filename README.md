@@ -30,6 +30,7 @@ A very simple Laravel 6 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 - Frontend and Backend User ACL with Gate Policy (type: admin/user)
 - Simple Static Dashboard
 - Developer Options for OAuth Clients and Personal Access Token
+- Build with Docker
 
 ## Installation
 
@@ -47,9 +48,6 @@ A very simple Laravel 6 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 
 ## Install with Docker
 
-- `git clone https://github.com/AnowarCST/laravel-vue-crud-starter.git`
-- `cd laravel-vue-crud-starter/`
-- `npm install`
 - `docker-compose up -d`
 - `docker exec -it vue-starter /bin/bash`
 - `php artisan migrate`
