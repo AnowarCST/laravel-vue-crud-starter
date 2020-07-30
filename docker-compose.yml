@@ -1,0 +1,71 @@
+version: '3'
+services:
+
+  #PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: vue-starter-app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: vue-starter-app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+       - ./:/var/www
+       - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: vue-starter-webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8008:80"
+        #  - "4431:443"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  #MySQL Service
+  db:
+    image: mysql:8.0.17
+    container_name: vue-starter-db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: 123456
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - app-network
+
+  #adminer for db access
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local 
+
