@@ -6,11 +6,11 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: vue-starter-app
+    container_name: vue-starter
     restart: unless-stopped
     tty: true
     environment:
-      SERVICE_NAME: vue-starter-app
+      SERVICE_NAME: vue-starter
       SERVICE_TAGS: dev
     working_dir: /var/www
     volumes:
@@ -54,7 +54,7 @@ services:
 
   #adminer for db access
   adminer:
-    image: adminer
+    image: adminer:latest
     restart: unless-stopped
     ports:
       - 8080:8080
