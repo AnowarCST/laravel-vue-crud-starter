@@ -3,7 +3,7 @@
 
 ## About Repository
 
-A very simple Laravel 6/7 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA Application.
+A very simple Laravel 7 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA Application.
 <p align="center">
 <img src="https://i.imgur.com/mZAHbUL.png">
 <img src="https://i.imgur.com/3hhoQnq.png">
@@ -13,7 +13,7 @@ A very simple Laravel 6/7 + Vue 2 + AdminLTE 3 based Curd Starter template for S
 
 ## Tech Specification
 
-- Laravel 6 + 7 (Branch: [laravel-7](https://github.com/AnowarCST/laravel-vue-crud-starter/tree/laravel-7))
+- Laravel 7
 - Vue 2 + VueRouter + vue-progressbar + sweetalert2 + laravel-vue-pagination
 - Laravel Passport
 - Admin LTE 3 + Bootstrap 4 + Font Awesome 5
@@ -55,7 +55,7 @@ A very simple Laravel 6/7 + Vue 2 + AdminLTE 3 based Curd Starter template for S
 - `php artisan passport:install`
 - Application http://localhost:8008/
 - Adminer for Database http://localhost:8080/
-- host: yourIP:3307, user: root, Password: 123456
+- DBhost: yourIP:3307, user: root, Password: 123456
 
 
 ## Unit Test
