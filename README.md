@@ -1,6 +1,10 @@
 
 # Laravel+Vue Crud Starter
 
+
+[![Build Status](https://dev.azure.com/anowarhossain/laravel-vue-crud-starter/_apis/build/status/AnowarCST.laravel-vue-crud-starter?branchName=master)](https://dev.azure.com/anowarhossain/laravel-vue-crud-starter/_build/latest?definitionId=6&branchName=master)
+
+
 ## About Repository
 
 A very simple Laravel 7 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA Application.
