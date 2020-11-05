@@ -7,7 +7,7 @@
 
 ## About Repository
 
-A very simple Laravel 7 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA Application.
+A very simple Laravel 8 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA Application.
 <p align="center">
 <img src="https://i.imgur.com/mZAHbUL.png">
 <img src="https://i.imgur.com/3hhoQnq.png">
@@ -17,7 +17,7 @@ A very simple Laravel 7 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 
 ## Tech Specification
 
-- Laravel 7
+- Laravel 8
 - Vue 2 + VueRouter + vue-progressbar + sweetalert2 + laravel-vue-pagination
 - Laravel Passport
 - Admin LTE 3 + Bootstrap 4 + Font Awesome 5
