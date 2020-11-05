@@ -24,7 +24,7 @@ class ProfileTest extends TestCase
      */
     public function testProfileData()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->getJson('/api/profile');
@@ -44,7 +44,7 @@ class ProfileTest extends TestCase
      */
     public function testProfileDataWithoutAuth()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->getJson('/api/profile');
 
@@ -58,7 +58,7 @@ class ProfileTest extends TestCase
      */
     public function testUpdateProfile()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->putJson('/api/profile', ['email' => $this->faker->email, 'name' => $this->faker->name]);
@@ -77,7 +77,7 @@ class ProfileTest extends TestCase
      */
     public function testUpdateProfileValidationError()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->putJson('/api/profile', ['name' => $this->faker->name]);
@@ -92,7 +92,7 @@ class ProfileTest extends TestCase
      */
     public function testChangePassword()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->postJson('/api/change-password', [
@@ -116,7 +116,7 @@ class ProfileTest extends TestCase
      */
     public function testChangePasswordValidationError()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->postJson('/api/change-password', ['current_password' => $this->faker->password]);

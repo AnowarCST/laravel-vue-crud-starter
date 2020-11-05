@@ -16,7 +16,7 @@ class CategoryTest extends TestCase
      */
     public function testCategoryList()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->getJson('/api/category');
