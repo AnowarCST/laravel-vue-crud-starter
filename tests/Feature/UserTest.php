@@ -23,7 +23,7 @@ class UserTest extends TestCase
      */
     public function testUserListForAdmin()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->getJson('/api/user');
@@ -43,7 +43,7 @@ class UserTest extends TestCase
      */
     public function testUserListForStandardUser()
     {
-        $user = factory(User::class)->create([
+        $user = User::factory()->create([
             'type' => 'user',
         ]);
 
@@ -64,7 +64,7 @@ class UserTest extends TestCase
      */
     public function testStoreUser()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $data = [
             'name' => $this->faker->name,
@@ -90,7 +90,7 @@ class UserTest extends TestCase
      */
     public function testStoreUserValidationError()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $data = [
             'name' => $this->faker->name,
@@ -110,7 +110,7 @@ class UserTest extends TestCase
      */
     public function testUpdateUser()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $data = [
             'name' => $this->faker->name,
@@ -133,7 +133,7 @@ class UserTest extends TestCase
      */
     public function testUpdateUserValidationError()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->putJson('/api/user/' . $user->id, ['email' => 'Invalid@email com']);
@@ -149,7 +149,7 @@ class UserTest extends TestCase
      */
     public function testDeleteUser()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'api')
             ->deleteJson('/api/user/' . $user->id);
@@ -167,7 +167,7 @@ class UserTest extends TestCase
      */
     public function testDeleteUserForNonAdminUser()
     {
-        $user = factory(User::class)->create([
+        $user = User::factory()->create([
             'type' => 'user',
         ]);
 
