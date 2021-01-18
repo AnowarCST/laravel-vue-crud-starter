@@ -1,4 +1,4 @@
-version: '3'
+version: '3.1'
 services:
 
   #PHP Service
@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: vue-starter
-    restart: unless-stopped
+    restart: always
     tty: true
     environment:
       SERVICE_NAME: vue-starter
@@ -23,7 +23,7 @@ services:
   webserver:
     image: nginx:alpine
     container_name: vue-starter-webserver
-    restart: unless-stopped
+    restart: always
     tty: true
     ports:
       - "8008:80"
@@ -38,7 +38,8 @@ services:
   db:
     image: mysql:8.0.17
     container_name: vue-starter-db
-    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
     tty: true
     ports:
       - "3307:3306"

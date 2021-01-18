@@ -43,6 +43,7 @@ A very simple Laravel 8 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 - `composer install`
 - `cp .env.example .env`
 - Update `.env` and set your database credentials
+- `php artisan key:generate`
 - `php artisan migrate`
 - `php artisan db:seed`
 - `php artisan passport:install`
@@ -54,6 +55,9 @@ A very simple Laravel 8 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 
 - `docker-compose up -d`
 - `docker exec -it vue-starter /bin/bash`
+- `composer install`
+- `cp .env.example .env`
+- `php artisan key:generate`
 - `php artisan migrate`
 - `php artisan db:seed`
 - `php artisan passport:install`
