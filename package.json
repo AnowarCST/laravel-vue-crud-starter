@@ -14,17 +14,17 @@
         "bootstrap": "^4.5.3",
         "cross-env": "^5.1",
         "jquery": "^3.5.1",
-        "laravel-mix": "^5.0.7",
+        "laravel-mix": "^5.0.9",
         "lodash": "^4.17.20",
         "popper.js": "^1.12",
         "resolve-url-loader": "^2.3.1",
-        "sass": "^1.27.0",
+        "sass": "^1.32.4",
         "sass-loader": "7.*",
         "vue": "^2.6.12",
         "vue-template-compiler": "^2.6.12"
     },
     "dependencies": {
-        "@fortawesome/fontawesome-free": "^5.15.1",
+        "@fortawesome/fontawesome-free": "^5.15.2",
         "@johmun/vue-tags-input": "^2.1.0",
         "admin-lte": "^3.0.5",
         "laravel-vue-pagination": "^2.3.1",
@@ -32,6 +32,6 @@
         "sweetalert2": "^9.17.2",
         "vform": "^1.0.1",
         "vue-progressbar": "^0.7.5",
-        "vue-router": "^3.4.7"
+        "vue-router": "^3.4.9"
     }
 }
