@@ -52,7 +52,15 @@ class ProductController extends BaseController
         // update pivot table
         $tag_ids = [];
         foreach ($request->get('tags') as $tag) {
-            $tag_ids[] = $tag['id'];
+            $existingtag = Tag::whereName($tag['text'])->first();
+            if ($existingtag) {
+				$tag_ids[] = $existingtag->id;
+			} else {
+            	$newtag = Tag::create([
+            		'name' => $tag['text']
+				]);
+				$tag_ids[] = $newtag->id;
+			}
         }
         $product->tags()->sync($tag_ids);
 
@@ -88,7 +96,15 @@ class ProductController extends BaseController
         // update pivot table
         $tag_ids = [];
         foreach ($request->get('tags') as $tag) {
-            $tag_ids[] = $tag['id'];
+            $existingtag = Tag::whereName($tag['text'])->first();
+            if ($existingtag) {
+				$tag_ids[] = $existingtag->id;
+			} else {
+            	$newtag = Tag::create([
+            		'name' => $tag['text']
+				]);
+				$tag_ids[] = $newtag->id;
+			}
         }
         $product->tags()->sync($tag_ids);
 
