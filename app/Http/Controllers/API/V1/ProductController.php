@@ -56,10 +56,10 @@ class ProductController extends BaseController
             if ($existingtag) {
                 $tag_ids[] = $existingtag->id;
             } else {
-            	$newtag = Tag::create([
-            		'name' => $tag['text']
-				]);
-				$tag_ids[] = $newtag->id;
+                $newtag = Tag::create([
+                    'name' => $tag['text']
+                ]);
+                $tag_ids[] = $newtag->id;
 			}
         }
         $product->tags()->sync($tag_ids);
@@ -99,12 +99,12 @@ class ProductController extends BaseController
             $existingtag = Tag::whereName($tag['text'])->first();
             if ($existingtag) {
                 $tag_ids[] = $existingtag->id;
-			} else {
-            	$newtag = Tag::create([
-            		'name' => $tag['text']
-				]);
-				$tag_ids[] = $newtag->id;
-			}
+            } else {
+                $newtag = Tag::create([
+                    'name' => $tag['text']
+                ]);
+                $tag_ids[] = $newtag->id;
+            }
         }
         $product->tags()->sync($tag_ids);
 
