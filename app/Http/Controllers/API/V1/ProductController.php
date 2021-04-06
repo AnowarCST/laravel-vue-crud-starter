@@ -54,8 +54,8 @@ class ProductController extends BaseController
         foreach ($request->get('tags') as $tag) {
             $existingtag = Tag::whereName($tag['text'])->first();
             if ($existingtag) {
-				$tag_ids[] = $existingtag->id;
-			} else {
+                $tag_ids[] = $existingtag->id;
+            } else {
             	$newtag = Tag::create([
             		'name' => $tag['text']
 				]);
@@ -98,7 +98,7 @@ class ProductController extends BaseController
         foreach ($request->get('tags') as $tag) {
             $existingtag = Tag::whereName($tag['text'])->first();
             if ($existingtag) {
-				$tag_ids[] = $existingtag->id;
+                $tag_ids[] = $existingtag->id;
 			} else {
             	$newtag = Tag::create([
             		'name' => $tag['text']
