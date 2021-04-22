@@ -28,4 +28,4 @@ Route::get('home', function () {
 
 Route::get('/{vue_capture?}', function () {
     return view('home');
-})->where('vue_capture', '[\/\w\.-]*')->middleware('auth');
+})->where('vue_capture', '[\/\w\.-]*')->middleware('auth')->middleware('verified');
