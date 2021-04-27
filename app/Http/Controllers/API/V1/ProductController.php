@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Requests\Products\ProductRequest;
 use App\Models\Product;
+use App\Models\Tag;
 use Illuminate\Http\Request;
 
 class ProductController extends BaseController
@@ -60,7 +61,7 @@ class ProductController extends BaseController
                     'name' => $tag['text']
                 ]);
                 $tag_ids[] = $newtag->id;
-			}
+            }
         }
         $product->tags()->sync($tag_ids);
 
