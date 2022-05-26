@@ -48,7 +48,10 @@ class ProfileController extends Controller
     {
         $user = auth('api')->user();
 
-        $user->update($request->all());
+        $user->update([
+            'name' => $request['name'], 
+            'email' => $request['email']
+        ]);
 
         $response = [
             'success' => true,
