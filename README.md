@@ -65,6 +65,14 @@ A very simple Laravel 8 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 - Adminer for Database http://localhost:8080/
 - DBhost: yourIP:3307, user: root, Password: 123456
 
+## Running the project
+Run command `php artisan serve` then open http://127.0.0.1:8000 on your browser.
+
+- Login: `admin@gmail.com`
+- Password: `123456`
+
+## Development
+# Run `npm run watch` to start developing on Vue files
 
 ## Unit Test
 
