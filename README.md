@@ -53,17 +53,26 @@ A very simple Laravel 8 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 
 ## Install with Docker
 
+### Start Back-end
 - `docker-compose up -d`
-- `docker exec -it vue-starter /bin/bash`
+- `docker exec -it vue-starter-php /bin/bash`
 - `composer install`
 - `cp .env.example .env`
 - `php artisan key:generate`
 - `php artisan migrate`
 - `php artisan db:seed`
-- `php artisan passport:install`
+- `php artisan passport:install` 
 - Application http://localhost:8008/
 - Adminer for Database http://localhost:8080/
 - DBhost: yourIP:3307, user: root, Password: 123456
+
+### Start Front-end
+Generate `public/css/app.css` and `public/js/app.js` inside the container (vue-starter-nodejs)
+- `docker exec -it vue-starter-nodejs sh`
+- `npm install` 
+- `npm run watch-poll` 
+
+
 
 
 ## Unit Test

@@ -1,16 +1,15 @@
 version: '3.1'
 services:
-
   #PHP Service
   app:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: vue-starter
+    container_name: vue-starter-php
     restart: always
     tty: true
     environment:
-      SERVICE_NAME: vue-starter
+      SERVICE_NAME: vue-starter-php
       SERVICE_TAGS: dev
     working_dir: /var/www
     volumes:
@@ -18,6 +17,24 @@ services:
        - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
     networks:
       - app-network
+
+  #NodeJS
+  nodejs:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_NodeJS
+    container_name: vue-starter-nodejs
+    restart: always
+    tty: true
+    environment:
+      SERVICE_NAME: vue-starter-nodejs
+      SERVICE_TAGS: dev
+    working_dir: /usr/src/app
+    volumes:
+       - ./:/usr/src/app
+    networks:
+      - app-network
+    
 
   #Nginx Service
   webserver:
@@ -36,7 +53,7 @@ services:
 
   #MySQL Service
   db:
-    image: mysql:8.0.17
+    image: mariadb:10.6.4-focal
     container_name: vue-starter-db
     command: --default-authentication-plugin=mysql_native_password
     restart: always
@@ -69,4 +86,3 @@ networks:
 volumes:
   dbdata:
     driver: local 
-
