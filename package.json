@@ -11,7 +11,7 @@
     },
     "devDependencies": {
         "axios": "^1.7.7",
-        "bootstrap": "^4.6.1",
+        "bootstrap": "^5.3.3",
         "cross-env": "^5.1",
         "jquery": "^3.6.0",
         "laravel-mix": "^6.0.49",
@@ -26,7 +26,7 @@
     "dependencies": {
         "@fortawesome/fontawesome-free": "^5.15.4",
         "@johmun/vue-tags-input": "^2.1.0",
-        "admin-lte": "^3.1.0",
+        "admin-lte": "^4.0.0-beta2",
         "laravel-vue-pagination": "^2.3.1",
         "moment": "^2.30.1",
         "sweetalert2": "^9.17.2",
