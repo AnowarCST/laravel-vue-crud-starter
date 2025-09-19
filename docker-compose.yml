@@ -1,72 +1,61 @@
-version: '3.1'
+version: "3.8"
+
 services:
-
-  #PHP Service
   app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    container_name: vue-starter
-    restart: always
-    tty: true
+    image: ghcr.io/thecodingmachine/php:8.3-v4-apache
+    platform: linux/amd64
+    container_name: laravel_app
+    working_dir: /var/www/html
     environment:
-      SERVICE_NAME: vue-starter
-      SERVICE_TAGS: dev
-    working_dir: /var/www
+      APACHE_DOCUMENT_ROOT: public
     volumes:
-       - ./:/var/www
-       - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
-    networks:
-      - app-network
-
-  #Nginx Service
-  webserver:
-    image: nginx:alpine
-    container_name: vue-starter-webserver
-    restart: always
-    tty: true
+      - ./:/var/www/html
     ports:
-      - "8008:80"
-        #  - "4431:443"
-    volumes:
-      - ./:/var/www
-      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
-    networks:
-      - app-network
+      - "8000:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/healthz || echo ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
-  #MySQL Service
+  node:
+    image: node:lts
+    platform: linux/amd64
+    container_name: laravel_node
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    environment:
+      VITE_HOST: 0.0.0.0
+      VITE_PORT: 5173
+    ports:
+      - "5173:5173"
+    depends_on:
+      - app
+
   db:
-    image: mysql:8.0.17
-    container_name: vue-starter-db
-    command: --default-authentication-plugin=mysql_native_password
-    restart: always
-    tty: true
-    ports:
-      - "3307:3306"
+    image: mysql:8.0
+    platform: linux/amd64
+    container_name: laravel_db
     environment:
       MYSQL_DATABASE: laravel
-      MYSQL_ROOT_PASSWORD: 123456
-      SERVICE_TAGS: dev
-      SERVICE_NAME: mysql
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
     volumes:
-      - dbdata:/var/lib/mysql
-    networks:
-      - app-network
-
-  #adminer for db access
-  adminer:
-    image: adminer:latest
-    restart: unless-stopped
+      - db_data:/var/lib/mysql
     ports:
-      - 8080:8080
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -proot -h 127.0.0.1 --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 25s
 
-#Docker Networks
-networks:
-  app-network:
-    driver: bridge
-
-#Volumes
 volumes:
-  dbdata:
-    driver: local 
-
+  db_data:

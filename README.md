@@ -53,17 +53,17 @@ A very simple Laravel 8 + Vue 2 + AdminLTE 3 based Curd Starter template for SPA
 
 ## Install with Docker
 
-- `docker-compose up -d`
-- `docker exec -it vue-starter /bin/bash`
-- `composer install`
 - `cp .env.example .env`
-- `php artisan key:generate`
-- `php artisan migrate`
-- `php artisan db:seed`
-- `php artisan passport:install`
-- Application http://localhost:8008/
-- Adminer for Database http://localhost:8080/
-- DBhost: yourIP:3307, user: root, Password: 123456
+- Update `.env` if needed; defaults expect the compose stack (`DB_HOST=db`, `DB_USERNAME=laravel`, `DB_PASSWORD=secret`).
+- `docker compose up -d`
+- `docker compose exec app composer install`
+- `docker compose exec app php artisan key:generate`
+- `docker compose exec app php artisan migrate`
+- `docker compose exec app php artisan db:seed`
+- `docker compose exec app php artisan passport:install`
+- Application http://localhost:8000/
+- Vite dev server http://localhost:5173/
+- MySQL available on port 3306 (user `laravel`, password `secret`)
 
 
 ## Unit Test
@@ -92,3 +92,14 @@ This repository is motivated by [Hujjat/laravStart](https://github.com/Hujjat/la
 ## License
 
 [MIT license](https://opensource.org/licenses/MIT).
+
+---
+
+## Contributing & Community
+
+- **Checklist:** see [`CHECKLIST.md`](./CHECKLIST.md)
+- **Project Rules (AI-friendly):** see [`RULES.md`](./RULES.md)
+- **Code of Conduct:** see [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)
+- **Tasks:** see [`TASKS.md`](./TASKS.md)
+
+By contributing, you agree to follow the rules and the Code of Conduct. If you use AI tooling, please review outputs carefully and take responsibility for the results.
