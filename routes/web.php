@@ -14,6 +14,9 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+// routes/web.php
+Route::get('/healthz', fn () => response('ok', 200));
+
 Route::get('/', function () {
     return view('welcome');
 });
