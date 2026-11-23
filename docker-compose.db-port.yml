@@ -1,0 +1,8 @@
+# Opt-in: expose MySQL to the host (loopback only) for a GUI client.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.db-port.yml up -d
+#
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_FORWARD_PORT:-3307}:3306"
