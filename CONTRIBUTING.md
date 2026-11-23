@@ -70,12 +70,16 @@ Useful to know:
 
 ## Quality checks
 
-CI (`.github/workflows/ci.yml`) runs all of these on every pull request. Run
-them locally before you push. Two more workflows run on pull requests: the
-end-to-end tests (`.github/workflows/e2e.yml`, every pull request) and the
-OWASP ZAP baseline scan (`.github/workflows/zap.yml`, pull requests to `main`
-that change code or configuration that shapes HTTP responses). See the
-README sections "End-to-end tests" and "Security scan (ZAP)".
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request,
+and CodeQL scans every pull request. Run them locally before you push.
+Three slower workflows are opt-in: the production image build
+(`.github/workflows/docker.yml`), the end-to-end tests
+(`.github/workflows/e2e.yml`) and the OWASP ZAP baseline scan
+(`.github/workflows/zap.yml`). A maintainer starts them on a pull request
+with the `run-docker-build`, `run-e2e` or `run-zap` label, or they run on
+every pull request when the matching repository variable is set. See
+[docs/ci-cd.md](docs/ci-cd.md) and the README sections "End-to-end tests"
+and "Security scan (ZAP)".
 
 | Check | Command | Fix automatically |
 | --- | --- | --- |
@@ -230,7 +234,7 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
 - [ ] New or changed behaviour has tests, including authorization and
       validation failures.
 - [ ] Changes to pages are covered by the end-to-end tests, and the E2E
-      workflow passes.
+      tests pass (locally, or in CI with the `run-e2e` label).
 - [ ] New or changed `/api` routes are documented in
       `docs/api/openapi.yaml`, and Redocly CLI reports no errors.
 - [ ] No inline scripts, inline event handlers or third-party CDNs were

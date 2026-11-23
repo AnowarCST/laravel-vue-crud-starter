@@ -112,8 +112,10 @@ Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
 
 - CI (`.github/workflows/ci.yml`) runs `composer validate --strict`,
   `composer audit`, `npm audit --audit-level=moderate`, Pint, Larastan
-  (level 9), ESLint, Prettier, the PHPUnit suite, a production Vite build and a
-  production Docker build with an `/up` smoke test.
+  (level 9), ESLint, Prettier, the PHPUnit suite and a production Vite build
+  on every pull request. The production Docker build with an `/up` smoke
+  test (`.github/workflows/docker.yml`), the end-to-end tests and the ZAP
+  scan are opt-in; see [docs/ci-cd.md](docs/ci-cd.md).
 - CodeQL (`.github/workflows/codeql.yml`) scans JavaScript/TypeScript and the
   GitHub Actions workflows on every PR and weekly.
 - Dependabot (`.github/dependabot.yml`) proposes weekly grouped updates for

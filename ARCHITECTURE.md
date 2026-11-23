@@ -190,6 +190,7 @@ flowchart LR
 | `tests/e2e/` | Playwright end-to-end tests, and the scripts and Compose file for the throwaway stack they run against (`setup/`, `compose.yaml`). |
 | `.zap/rules.tsv` | Rules for the OWASP ZAP baseline scan. |
 | `.github/` | CI, end-to-end tests, ZAP scan, CodeQL and Dependabot configuration. |
+| `deploy/` | Disabled, fully commented CI/CD templates for GitHub Actions, AWS and Azure (see `docs/ci-cd.md`). |
 
 ## Authorization model
 
@@ -315,27 +316,47 @@ on 8080, serves only `public/`, and the entrypoint runs
 
 ## Continuous integration
 
-- `.github/workflows/ci.yml`, on pushes to `main` and on pull requests:
+See [docs/ci-cd.md](docs/ci-cd.md) for when each workflow runs, how to turn
+the opt-in ones on, and which checks to require in branch protection.
+
+Always on:
+
+- `.github/workflows/ci.yml`, on pushes to `main`, on pull requests and on
+  demand:
   - **php**: `composer validate --strict`, `composer install`,
     `composer audit`, Pint (`composer lint`), Larastan level 9
     (`composer analyse`) and `php artisan test`.
   - **frontend**: `npm ci`, ESLint, Prettier check, `npm audit
     --audit-level=moderate` and `npm run build`.
-  - **docker**: builds the `prod` target and checks that `/up` responds.
-- `.github/workflows/e2e.yml`, on pushes to `main`, on pull requests and on
-  demand: builds the `prod` image, starts the end-to-end stack with
-  `tests/e2e/setup/start-stack.sh` (the `prod` image, MySQL and Mailpit) and
-  runs the Playwright tests in Chromium with `tests/e2e/setup/run-tests.sh`.
-  The HTML report and traces are uploaded as the `playwright-report`
-  artifact.
-- `.github/workflows/zap.yml`, weekly, on demand and on pull requests to
-  `main` that change code or configuration that shapes HTTP responses:
-  starts the same stack and runs an OWASP ZAP baseline scan of the
-  signed-out pages. Only the rules set to `FAIL` in `.zap/rules.tsv` fail the
-  job; the report is uploaded as the `zap-baseline-report` artifact.
 - `.github/workflows/codeql.yml`: CodeQL for JavaScript/TypeScript and GitHub
   Actions on pull requests, pushes to `main` and weekly.
 - `.github/dependabot.yml`: weekly update pull requests for Composer, npm,
   Docker images, Docker Compose and GitHub Actions.
-- `azure-pipelines.yml`: a legacy Azure Pipelines check that runs the PHP test
-  suite in the `dev` image. GitHub Actions is the primary CI.
+
+Opt-in. Each of these runs on demand, on a pull request with its label
+(`run-docker-build`, `run-e2e`, `run-zap`), and on every pull request and
+push to `main` when its repository variable (`RUN_DOCKER_BUILD`,
+`RUN_E2E`, `RUN_ZAP`) is `true`; otherwise its job is skipped:
+
+- `.github/workflows/docker.yml`: builds the `prod` target and checks that
+  `/up` responds.
+- `.github/workflows/e2e.yml`: builds the `prod` image, starts the
+  end-to-end stack with `tests/e2e/setup/start-stack.sh` (the `prod` image,
+  MySQL and Mailpit) and runs the Playwright tests in Chromium with
+  `tests/e2e/setup/run-tests.sh`. The HTML report and traces are uploaded as
+  the `playwright-report` artifact.
+- `.github/workflows/zap.yml` (pull requests to `main` only, no push
+  trigger, plus a weekly run when `RUN_ZAP` is `true`): starts the same stack
+  and runs an OWASP ZAP baseline scan of the signed-out pages. Only the
+  rules set to `FAIL` in `.zap/rules.tsv` fail the job; the report is
+  uploaded as the `zap-baseline-report` artifact.
+
+Not run automatically:
+
+- `azure-pipelines.yml`: a legacy Azure Pipelines job that runs the PHP
+  test suite in the `dev` image. It runs only when started by hand in Azure
+  DevOps (`trigger: none`, `pr: none`).
+- `deploy/`: commented templates for deploying with GitHub Actions
+  (GitHub Container Registry), AWS (CodeBuild, ECR, ECS) and Azure
+  (Azure Pipelines, Azure Container Registry). None of them runs until
+  enabled.
