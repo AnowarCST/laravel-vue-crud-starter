@@ -32,3 +32,9 @@ Homestead.yaml
 *.code-workspace
 .DS_Store
 Thumbs.db
+
+# Playwright end-to-end tests: reports, traces and the generated stack state
+# (random throwaway secrets written by tests/e2e/setup/start-stack.sh)
+/tests/e2e/test-results/
+/tests/e2e/playwright-report/
+/tests/e2e/.stack/

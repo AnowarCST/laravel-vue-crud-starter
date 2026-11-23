@@ -12,6 +12,8 @@ export default [
             'node_modules/**',
             'storage/**',
             'bootstrap/cache/**',
+            'tests/e2e/test-results/**',
+            'tests/e2e/playwright-report/**',
             // Local tool data (for example Claude Code worktrees), never part of the repository.
             '.claude/**',
         ],
@@ -27,7 +29,7 @@ export default [
         },
     },
     {
-        files: ['vite.config.js', 'eslint.config.js'],
+        files: ['vite.config.js', 'eslint.config.js', 'playwright.config.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -35,8 +37,9 @@ export default [
         },
     },
     {
-        // Image render script: runs in Node; the page.evaluate() callback runs in the browser.
-        files: ['resources/images/**/*.mjs'],
+        // The image render script and the Playwright tests run in Node; code passed to
+        // page.evaluate() runs in the browser.
+        files: ['resources/images/**/*.mjs', 'tests/e2e/**/*.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

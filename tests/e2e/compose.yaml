@@ -1,0 +1,97 @@
+# Throwaway stack for the end-to-end tests and the ZAP baseline scan.
+#
+# Do not run this file directly. Use the scripts next to it:
+#
+#   tests/e2e/setup/start-stack.sh   build the prod image, start, migrate, seed, create test accounts
+#   tests/e2e/setup/run-tests.sh     run Playwright in the official Playwright image
+#   tests/e2e/setup/stop-stack.sh    remove the containers, network and state
+#
+# The app runs from the production image (target "prod"), like a real
+# deployment. MySQL keeps its data in memory (tmpfs), so nothing survives
+# stop-stack.sh. Every secret comes from tests/e2e/.stack/stack.env, which
+# start-stack.sh generates with random values on each run.
+
+services:
+  db:
+    image: mysql:9.7.4
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: ${E2E_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${E2E_DB_ROOT_PASSWORD}
+    tmpfs:
+      - /var/lib/mysql
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping --host=127.0.0.1 --user=root --silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    ports:
+      - "127.0.0.1:${E2E_MAILPIT_PORT:-8125}:8025"
+    security_opt:
+      - no-new-privileges:true
+
+  app:
+    image: ${E2E_IMAGE:-lvcs-e2e:local}
+    # Built by start-stack.sh (or by CI before it runs start-stack.sh).
+    pull_policy: never
+    environment:
+      APP_NAME: "Laravel Starter"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${E2E_APP_KEY}
+      APP_URL: http://localhost:${E2E_APP_PORT:-8080}
+      LOG_LEVEL: warning
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: laravel
+      DB_USERNAME: laravel
+      DB_PASSWORD: ${E2E_DB_PASSWORD}
+      SESSION_DRIVER: database
+      SESSION_ENCRYPT: "true"
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_FROM_ADDRESS: no-reply@example.test
+      MAIL_FROM_NAME: "Laravel Starter"
+    ports:
+      - "127.0.0.1:${E2E_APP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Playwright with Chromium, sharing the app container's network namespace:
+  # inside it the app is http://localhost:8080 and Mailpit is http://mailpit:8025.
+  # The browser address must equal APP_URL, because the app builds product
+  # photo URLs from APP_URL and the CSP only allows images from 'self'. That is
+  # why run-tests.sh requires E2E_APP_PORT=8080. Started by run-tests.sh only.
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.65.0-noble
+    profiles: [runner]
+    network_mode: service:app
+    user: "${E2E_UID:-1000}:${E2E_GID:-1000}"
+    init: true
+    ipc: host
+    working_dir: /work
+    volumes:
+      - ../..:/work
+    environment:
+      HOME: /tmp
+      CI: ${CI:-}
+      E2E_BASE_URL: http://localhost:8080
+      E2E_MAILPIT_URL: http://mailpit:8025
