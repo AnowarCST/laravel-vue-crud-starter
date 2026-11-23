@@ -25,7 +25,10 @@ with CRUD screens, authentication and an OAuth2 API.
 - Modal-based create and edit, paginated lists, delete with confirmation
 - Login, register, email verification, forgot and reset password
 - Profile: update name and email, change password
-- Product management with image upload
+- Product catalogue with SKU, stock level and status (active, draft,
+  archived), search, filters and sorting that are kept in the URL, and image
+  upload
+- Dashboard with product counts and a low-stock list
 - User management (admin only)
 - Categories and tags (admin only in the menu)
 - Role-based access control (admin and user) on the API and in the UI
@@ -68,8 +71,10 @@ docker compose --profile dev run --rm node sh -c "npm ci && npm run build"
 
 Open <http://localhost:8000> (change `APP_PORT` in `.env` to use another port).
 
-Optional demo data (6 categories, 2 tags and 7 products; it creates no user
-accounts, and running it again does not add duplicates):
+Optional demo data: an everyday retail catalogue with 6 categories, 8 tags
+and 14 products, each with an original illustration. It creates no user
+accounts, and running it again does not add duplicates or change existing
+rows:
 
 ```bash
 docker compose exec app php artisan db:seed
@@ -205,7 +210,18 @@ existing installation.
 10. **Uploaded images are re-encoded** on the server. This removes metadata
     such as EXIF and GPS data and anything hidden inside the file. Images
     that cannot be decoded are rejected.
-11. **Migrate** with `php artisan migrate --force`, then
+11. **Products have new columns and a numeric price.** The migration
+    `2026_11_23_000003_add_inventory_fields_to_products_table` adds `sku`
+    (unique, empty for existing products), `stock` (0) and `status`
+    (`active`), and stores `price` as `decimal(10,2)`. Before converting, it
+    rewrites existing prices: values that are not numbers or are negative
+    become 0.00, and values above 99999999.99 are capped. A SKU is required
+    when creating a product. Rolling back removes the SKU, stock and status
+    values. Running `php artisan db:seed` adds the new demo catalogue but does
+    not remove the old car demo products, categories or tags, and the old car
+    photos are no longer shipped. Delete those rows in the UI if you do not
+    want them.
+12. **Migrate** with `php artisan migrate --force`, then
     `php artisan optimize:clear`.
 
 **Rollback**: redeploy the previous image or commit, then restore the database
@@ -234,9 +250,12 @@ import the dump.
 
 Please report vulnerabilities privately. See [SECURITY.md](SECURITY.md).
 
-## Credit
+## Images
 
-This repository is motivated by [Hujjat/laravStart](https://github.com/Hujjat/laravStart) and his video tutorial on [YouTube](https://www.youtube.com/playlist?list=PLB4AdipoHpxaHDLIaMdtro1eXnQtl_UvE).
+The logo (`public/images/logo.svg` and the favicons) and the product
+illustrations (`public/images/products`) were made for this project and are
+released under the MIT license with the rest of the code. Their sources are in
+`resources/images`; see [resources/images/README.md](resources/images/README.md).
 
 ## License
 

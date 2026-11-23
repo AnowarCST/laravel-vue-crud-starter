@@ -59,7 +59,7 @@
         <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
             <div class="sidebar-brand">
                 <router-link to="/dashboard" class="brand-link">
-                    <img src="/images/logo.png" alt="" class="brand-image opacity-75 shadow" />
+                    <img src="/images/logo.svg" alt="" class="brand-image" />
                     <span class="brand-text fw-light">{{ appName }}</span>
                 </router-link>
             </div>

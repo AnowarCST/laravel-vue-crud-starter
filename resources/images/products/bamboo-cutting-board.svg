@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Bamboo cutting board</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="462" rx="200" ry="18" fill="#C9D5E4"/>
+  <clipPath id="board"><rect x="220" y="190" width="360" height="240" rx="30"/></clipPath>
+  <g clip-path="url(#board)">
+    <rect x="220" y="190" width="30" height="240" fill="#E2B577"/> <rect x="250" y="190" width="30" height="240" fill="#EBC690"/> <rect x="280" y="190" width="30" height="240" fill="#E2B577"/> <rect x="310" y="190" width="30" height="240" fill="#EBC690"/> <rect x="340" y="190" width="30" height="240" fill="#E2B577"/> <rect x="370" y="190" width="30" height="240" fill="#EBC690"/> <rect x="400" y="190" width="30" height="240" fill="#E2B577"/> <rect x="430" y="190" width="30" height="240" fill="#EBC690"/> <rect x="460" y="190" width="30" height="240" fill="#E2B577"/> <rect x="490" y="190" width="30" height="240" fill="#EBC690"/> <rect x="520" y="190" width="30" height="240" fill="#E2B577"/> <rect x="550" y="190" width="30" height="240" fill="#EBC690"/>
+  </g>
+  <rect x="246" y="214" width="282" height="192" rx="18" stroke="#C99350" stroke-width="7" fill="none"/>
+  <circle cx="552" cy="310" r="13" fill="#DFE8F3"/>
+  <rect x="220" y="420" width="360" height="12" rx="6" fill="#C99350"/>
+</svg>

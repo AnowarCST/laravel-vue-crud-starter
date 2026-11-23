@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Paperback book about writing readable code</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="405" cy="470" rx="150" ry="18" fill="#C9D5E4"/>
+  <rect x="300" y="138" width="230" height="320" rx="10" fill="#FFFFFF"/>
+  <rect x="300" y="138" width="222" height="320" rx="10" fill="#E4EAF2"/>
+  <rect x="280" y="130" width="230" height="320" rx="10" fill="#2E3A59"/>
+  <rect x="280" y="130" width="24" height="320" rx="6" fill="#45547A"/>
+  <g fill="none" stroke="#F2A93B" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M370 220 L340 250 L370 280"/>
+    <path d="M440 220 L470 250 L440 280"/>
+    <path d="M418 206 L392 294"/>
+  </g>
+  <rect x="336" y="330" width="140" height="14" rx="7" fill="#FFFFFF"/>
+  <rect x="336" y="356" width="100" height="14" rx="7" fill="#FFFFFF" fill-opacity="0.6"/>
+  <rect x="336" y="404" width="70" height="10" rx="5" fill="#7CCFC6"/>
+</svg>

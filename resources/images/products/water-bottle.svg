@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Stainless steel water bottle</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="480" rx="110" ry="18" fill="#C9D5E4"/>
+  <rect x="356" y="104" width="88" height="64" rx="16" fill="#2E3A59"/>
+  <path d="M378 104 C378 72 422 72 422 104" stroke="#2E3A59" stroke-width="12" fill="none"/>
+  <rect x="372" y="160" width="56" height="34" fill="#8A97AD"/>
+  <path d="M372 190 L428 190 C470 210 470 230 470 260 L470 430 C470 452 452 466 430 466 L370 466 C348 466 330 452 330 430 L330 260 C330 230 330 210 372 190 Z" fill="#2FA39A"/>
+  <rect x="330" y="300" width="140" height="40" fill="#23847C"/>
+  <rect x="352" y="232" width="18" height="200" rx="9" fill="#FFFFFF" fill-opacity="0.3"/>
+</svg>

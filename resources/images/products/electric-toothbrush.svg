@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Electric toothbrush on a charging stand</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="478" rx="110" ry="18" fill="#C9D5E4"/>
+  <rect x="330" y="430" width="140" height="36" rx="18" fill="#2E3A59"/>
+  <rect x="368" y="414" width="64" height="24" rx="8" fill="#45547A"/>
+  <path d="M372 230 C372 214 384 206 400 206 C416 206 428 214 428 230 L432 400 C432 414 420 424 400 424 C380 424 368 414 368 400 Z" fill="#FFFFFF"/>
+  <rect x="388" y="112" width="24" height="110" rx="12" fill="#FFFFFF"/>
+  <rect x="380" y="96" width="40" height="50" rx="10" fill="#FFFFFF"/>
+  <g fill="#2FA39A">
+    <rect x="356" y="100" width="24" height="9" rx="4"/>
+    <rect x="356" y="116" width="24" height="9" rx="4"/>
+    <rect x="356" y="132" width="24" height="9" rx="4"/>
+  </g>
+  <circle cx="400" cy="290" r="15" fill="#2FA39A"/>
+  <rect x="394" y="322" width="12" height="40" rx="6" fill="#E4EAF2"/>
+</svg>

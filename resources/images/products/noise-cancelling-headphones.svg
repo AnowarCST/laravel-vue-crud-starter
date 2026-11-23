@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Over-ear headphones</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="476" rx="210" ry="18" fill="#C9D5E4"/>
+  <path d="M262 330 C262 200 322 150 400 150 C478 150 538 200 538 330" stroke="#2E3A59" stroke-width="30" stroke-linecap="round" fill="none"/>
+  <path d="M300 300 C300 215 345 182 400 182" stroke="#45547A" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <rect x="218" y="290" width="92" height="158" rx="40" fill="#4A7BD0"/>
+  <rect x="490" y="290" width="92" height="158" rx="40" fill="#4A7BD0"/>
+  <rect x="286" y="306" width="34" height="126" rx="17" fill="#2E3A59"/>
+  <rect x="480" y="306" width="34" height="126" rx="17" fill="#2E3A59"/>
+  <rect x="236" y="318" width="22" height="70" rx="11" fill="#9DB8E8" fill-opacity="0.6"/>
+  <circle cx="548" cy="410" r="9" fill="#F2A93B"/>
+</svg>

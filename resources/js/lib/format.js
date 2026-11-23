@@ -26,7 +26,7 @@ export function truncate(text, length = 60) {
 /**
  * Same-origin URL for a product photo (CSP img-src 'self').
  * - uploads/<random>.<ext>  -> /storage/uploads/... (public disk, via upload API)
- * - images/...              -> /images/...           (legacy seeded demo images)
+ * - images/...              -> /images/...           (bundled demo images, e.g. images/products/coffee-mug.webp)
  * Anything else (absolute/external URLs, traversal) is not rendered.
  */
 export function storageUrl(path) {

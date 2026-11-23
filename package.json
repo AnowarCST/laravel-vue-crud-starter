@@ -11,8 +11,8 @@
     "production": "vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write resources/js resources/css vite.config.js eslint.config.js",
-    "format:check": "prettier --check resources/js resources/css vite.config.js eslint.config.js",
+    "format": "prettier --write resources/js resources/css resources/images/render.mjs vite.config.js eslint.config.js",
+    "format:check": "prettier --check resources/js resources/css resources/images/render.mjs vite.config.js eslint.config.js",
     "audit:security": "npm audit --audit-level=moderate"
   },
   "dependencies": {

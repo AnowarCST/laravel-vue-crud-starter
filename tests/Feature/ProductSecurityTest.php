@@ -66,7 +66,7 @@ class ProductSecurityTest extends TestCase
         $user = User::factory()->create();
         $category = Category::create(['name' => 'Category']);
         $data = [
-            'name' => 'Product', 'description' => 'Description', 'price' => '19.95',
+            'name' => 'Product', 'sku' => 'PRD-1', 'description' => 'Description', 'price' => '19.95',
             'category_id' => $category->id, 'tags' => [['text' => 'First']],
         ];
         $this->actingAs($user, 'api');

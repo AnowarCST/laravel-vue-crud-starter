@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">LED desk lamp</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="380" cy="474" rx="150" ry="18" fill="#C9D5E4"/>
+  <path d="M470 232 L610 420 L380 420 Z" fill="#F2A93B" fill-opacity="0.18"/>
+  <rect x="250" y="430" width="170" height="30" rx="15" fill="#2E3A59"/>
+  <path d="M335 432 L280 300 L430 196" stroke="#45547A" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="280" cy="300" r="16" fill="#F2A93B"/>
+  <circle cx="335" cy="430" r="14" fill="#F2A93B"/>
+  <path d="M410 170 L540 200 C548 202 550 210 545 216 L505 262 C500 268 492 268 487 262 L404 186 C398 180 401 168 410 170 Z" fill="#2E3A59"/>
+  <path d="M500 214 L530 216 L498 252 Z" fill="#FFE3A8"/>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Starter logo</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded app tile -->
+  <rect width="64" height="64" rx="14" fill="url(#tile)"/>
+  <!-- Box: top, left and right faces -->
+  <path d="M32 12 50 21 32 30 14 21Z" fill="#fff"/>
+  <path d="M14 21 32 30V51L14 42Z" fill="#fff" fill-opacity=".78"/>
+  <path d="M50 21 32 30V51L50 42Z" fill="#fff" fill-opacity=".56"/>
+  <!-- Tape across the lid -->
+  <path d="M23 16.5 41 25.5" stroke="#4f46e5" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
+  <!-- Check badge -->
+  <circle cx="47" cy="47" r="10" fill="#22c55e" stroke="#fff" stroke-width="3"/>
+  <path d="M42.5 47.2 45.8 50.3 51.6 43.9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\API\V1;
 
+use App\Http\Requests\Products\ProductIndexRequest;
 use App\Http\Requests\Products\ProductRequest;
 use App\Models\Product;
 use App\Models\Tag;
 use App\Support\ImageReencoder;
 use App\Support\UnreadableImageException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +19,79 @@ use RuntimeException;
 
 class ProductController extends BaseController
 {
-    public function index(): JsonResponse
+    /**
+     * Paginated product list with optional search, filters and sorting; see
+     * ProductIndexRequest for the accepted query parameters.
+     */
+    public function index(ProductIndexRequest $request): JsonResponse
     {
-        return $this->sendResponse(Product::latest()->with('category', 'tags')->paginate(10), 'Product list');
+        $query = Product::query()->with('category', 'tags');
+
+        if (($search = $request->filterText('search')) !== null) {
+            $this->search($query, $search);
+        }
+        if (($categoryId = $request->filterInt('category_id')) !== null) {
+            $query->where('category_id', $categoryId);
+        }
+        if (($tagId = $request->filterInt('tag')) !== null) {
+            $query->whereHas('tags', fn (Builder $tags) => $tags->where('tags.id', $tagId));
+        }
+        if (($status = $request->filterText('status')) !== null) {
+            $query->where('status', $status);
+        }
+        match ($request->filterText('stock')) {
+            'in' => $query->where('stock', '>', 0),
+            'low' => $query->whereBetween('stock', [1, Product::LOW_STOCK_THRESHOLD]),
+            'out' => $query->where('stock', 0),
+            default => null,
+        };
+
+        [$column, $direction] = $request->sort();
+        // The id breaks ties (seeded rows share a created_at value) so pages
+        // do not overlap.
+        $query->orderBy($column, $direction)->orderBy('id', $direction);
+
+        return $this->sendResponse($query->paginate($request->perPage())->withQueryString(), 'Product list');
+    }
+
+    /**
+     * Counts for the dashboard. Low stock is 1 to Product::LOW_STOCK_THRESHOLD
+     * units; out of stock is 0.
+     */
+    public function stats(): JsonResponse
+    {
+        $byStatus = Product::query()->toBase()
+            ->select('status')->selectRaw('count(*) as aggregate')
+            ->groupBy('status')->pluck('aggregate', 'status');
+
+        $count = fn (string $status): int => is_numeric($byStatus[$status] ?? null) ? (int) $byStatus[$status] : 0;
+
+        return $this->sendResponse([
+            'total' => Product::count(),
+            'active' => $count('active'),
+            'draft' => $count('draft'),
+            'archived' => $count('archived'),
+            'low_stock' => Product::whereBetween('stock', [1, Product::LOW_STOCK_THRESHOLD])->count(),
+            'out_of_stock' => Product::where('stock', 0)->count(),
+        ], 'Product statistics');
+    }
+
+    /**
+     * Case-insensitive match on name, SKU or description. "%" and "_" in the
+     * search text are matched literally ("!" is the LIKE escape character,
+     * which behaves the same on MySQL and SQLite).
+     *
+     * @param  Builder<Product>  $query
+     */
+    private function search(Builder $query, string $search): void
+    {
+        $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+
+        $query->where(function (Builder $where) use ($pattern) {
+            foreach (['name', 'sku', 'description'] as $column) {
+                $where->orWhereRaw("{$column} like ? escape '!'", [$pattern]);
+            }
+        });
     }
 
     public function show(string $id): JsonResponse

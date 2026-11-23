@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
             vue({
                 template: {
                     // Let Vite rewrite relative asset URLs in SFC templates, but leave
-                    // absolute paths (e.g. /images/logo.png, /storage/...) untouched.
+                    // absolute paths (e.g. /images/logo.svg, /storage/...) untouched.
                     transformAssetUrls: { base: null, includeAbsolute: false },
                 },
             }),

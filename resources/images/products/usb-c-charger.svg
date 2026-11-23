@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Two-port USB-C wall charger with a cable</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="478" rx="190" ry="18" fill="#C9D5E4"/>
+  <rect x="306" y="128" width="20" height="52" rx="6" fill="#8A97AD"/>
+  <rect x="374" y="128" width="20" height="52" rx="6" fill="#8A97AD"/>
+  <rect x="250" y="170" width="200" height="250" rx="34" fill="#E4EAF2"/>
+  <rect x="250" y="170" width="184" height="250" rx="34" fill="#FFFFFF"/>
+  <rect x="312" y="300" width="60" height="22" rx="11" fill="#2E3A59"/>
+  <rect x="312" y="342" width="60" height="22" rx="11" fill="#2E3A59"/>
+  <path d="M352 210 L330 252 L346 252 L336 282 L364 236 L348 236 L358 210 Z" fill="#F2A93B"/>
+  <path d="M342 375 C342 440 420 455 500 430 C560 410 585 360 560 320" stroke="#45547A" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <rect x="540" y="262" width="40" height="66" rx="12" fill="#2E3A59"/>
+  <rect x="550" y="240" width="20" height="28" rx="6" fill="#8A97AD"/>
+</svg>

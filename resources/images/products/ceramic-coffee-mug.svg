@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Ceramic coffee mug</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="466" rx="150" ry="18" fill="#C9D5E4"/>
+  <g fill="none" stroke="#8A97AD" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7">
+    <path d="M350 180 C335 160 365 140 350 115"/>
+    <path d="M400 175 C385 150 415 130 400 100"/>
+    <path d="M450 180 C435 160 465 140 450 115"/>
+  </g>
+  <path d="M500 255 C575 255 585 375 500 390" stroke="#CC5C4A" stroke-width="30" fill="none" stroke-linecap="round"/>
+  <path d="M290 215 L510 215 L500 420 C499 440 485 452 465 452 L335 452 C315 452 301 440 300 420 Z" fill="#E8735F"/>
+  <ellipse cx="400" cy="215" rx="110" ry="20" fill="#CC5C4A"/>
+  <ellipse cx="400" cy="219" rx="94" ry="13" fill="#7A4E36"/>
+  <rect x="322" y="250" width="16" height="160" rx="8" fill="#FFFFFF" fill-opacity="0.25"/>
+</svg>

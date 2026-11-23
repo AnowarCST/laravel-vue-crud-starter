@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Wireless mouse</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="476" rx="140" ry="18" fill="#C9D5E4"/>
+  <path d="M400 140 C485 140 515 215 515 300 C515 405 470 462 400 462 C330 462 285 405 285 300 C285 215 315 140 400 140 Z" fill="#2E3A59"/>
+  <path d="M400 140 C485 140 515 215 515 270 L285 270 C285 215 315 140 400 140 Z" fill="#45547A"/>
+  <path d="M400 142 L400 270" stroke="#2E3A59" stroke-width="6"/>
+  <rect x="388" y="180" width="24" height="54" rx="12" fill="#9DB8E8"/>
+  <path d="M318 330 C318 300 330 286 342 286" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <g fill="none" stroke="#F2A93B" stroke-width="12" stroke-linecap="round">
+    <path d="M560 200 A40 40 0 0 1 600 160"/>
+    <path d="M540 200 A60 60 0 0 1 600 140" stroke-opacity="0.7"/>
+    <path d="M520 200 A80 80 0 0 1 600 120" stroke-opacity="0.4"/>
+  </g>
+</svg>

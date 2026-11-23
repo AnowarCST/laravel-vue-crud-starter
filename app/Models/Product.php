@@ -16,19 +16,48 @@ class Product extends Model
     /** @use HasFactory<ProductFactory> */
     use HasFactory, SoftDeletes;
 
+    public const STATUSES = ['active', 'draft', 'archived'];
+
+    /**
+     * Products with this many units or fewer (but more than zero) are
+     * reported as "low stock".
+     */
+    public const LOW_STOCK_THRESHOLD = 5;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name', 'description', 'price', 'category_id', 'photo',
+        'name', 'sku', 'description', 'price', 'stock', 'status', 'category_id', 'photo',
+    ];
+
+    /**
+     * Defaults for new models, matching the column defaults.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'stock' => 0,
+        'status' => 'active',
     ];
 
     /**
      * @var list<string>
      */
     protected $appends = ['photo_url'];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+            'stock' => 'integer',
+        ];
+    }
 
     /**
      * @return BelongsTo<Category, $this>
@@ -49,7 +78,9 @@ class Product extends Model
     /**
      * Browser URL for the photo: uploads live on the "public" disk
      * (/storage/uploads/..., requires `php artisan storage:link`); seeded
-     * demo photos are static files under public/images.
+     * demo photos are static files under public/images (for example
+     * images/products/coffee-mug.webp). Any other value, such as an external
+     * URL or a path containing "..", has no URL.
      *
      * @return Attribute<string|null, never>
      */
@@ -58,7 +89,8 @@ class Product extends Model
         return Attribute::get(function (): ?string {
             $photo = $this->photo;
 
-            if (! is_string($photo) || $photo === '') {
+            if (! is_string($photo) || str_contains($photo, '..')
+                || ! preg_match('~^(uploads|images)/[A-Za-z0-9_./-]+$~', $photo)) {
                 return null;
             }
 
