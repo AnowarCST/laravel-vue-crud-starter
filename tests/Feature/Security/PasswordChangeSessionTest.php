@@ -4,8 +4,10 @@ namespace Tests\Feature\Security;
 
 use App\Models\User;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use Laravel\Passport\ApiTokenCookieFactory;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,6 +17,8 @@ use Tests\TestCase;
  * POST /api/change-password from the SPA keeps the browser that made the
  * change signed in and signs out the account's other browser sessions
  * (AuthenticateSession, see App\Http\Middleware\KeepSessionAfterPasswordChange).
+ * laravel_token cookies issued before the change stop working
+ * (App\Http\Middleware\RejectStaleApiTokenCookie).
  *
  * Each "browser" is a set of cookies (session and laravel_token) plus the
  * CSRF token of its page, sent explicitly with every request.
@@ -79,6 +83,54 @@ class PasswordChangeSessionTest extends TestCase
         ])->assertOk()->assertCookieMissing($this->sessionCookie());
     }
 
+    public function test_api_cookies_issued_before_a_password_change_stop_working(): void
+    {
+        $user = User::factory()->create();
+        $current = $this->signIn($user);
+        $other = $this->signIn($user);
+        $this->getProfile($other)->assertOk();
+
+        $response = $this->changePasswordFrom($current)->assertOk();
+
+        $this->getProfile($other)->assertUnauthorized();
+        $this->getProfile($current)->assertUnauthorized();
+
+        // The browser that made the change received a fresh cookie, and its
+        // next page load issues one as well.
+        $fresh = ['token' => $this->cookieValue($response, Passport::cookie())] + $current;
+        $this->getProfile($fresh)->assertOk()->assertJsonPath('data.id', $user->id);
+        $page = $this->visitDashboard($this->cookieValue($response, $this->sessionCookie()))->assertOk();
+        $this->getProfile(['token' => $this->cookieValue($page, Passport::cookie())] + $current)->assertOk();
+    }
+
+    public function test_api_cookies_without_the_password_claim_are_rejected(): void
+    {
+        $user = User::factory()->create();
+        $browser = $this->signIn($user);
+        // A cookie as Passport issues it by default, without the claim.
+        $passportCookie = new ApiTokenCookieFactory(app('config'), app(Encrypter::class));
+
+        $this->getProfile(['token' => (string) $passportCookie->make($user->id, $browser['csrf'])->getValue()] + $browser)
+            ->assertUnauthorized();
+        $this->getProfile($browser)->assertOk();
+    }
+
+    public function test_a_stale_api_cookie_does_not_block_public_routes_or_bearer_tokens(): void
+    {
+        app(ClientRepository::class)->createPersonalAccessGrantClient('Personal Access Client', 'users');
+        $user = User::factory()->create();
+        $other = $this->signIn($user);
+        $this->changePasswordFrom($this->signIn($user))->assertOk();
+
+        $this->getProfile($other, '/api/version')->assertOk();
+
+        // The guard uses the bearer token and ignores the cookie.
+        $this->newBrowserRequest();
+        $this->withCredentials()->withCookie(Passport::cookie(), $other['token'])
+            ->withToken($user->createToken('cli')->accessToken)
+            ->getJson('/api/profile')->assertOk()->assertJsonPath('data.id', $user->id);
+    }
+
     /**
      * Signs in through the login form and opens the dashboard, like a new
      * browser would.
@@ -117,6 +169,23 @@ class PasswordChangeSessionTest extends TestCase
                 'new_password' => self::NEW_PASSWORD,
                 'confirm_password' => self::NEW_PASSWORD,
             ]);
+    }
+
+    /**
+     * An API request authenticated like the SPA: laravel_token cookie and
+     * CSRF header, no session cookie.
+     *
+     * @param  array{session: string, token: string, csrf: string}  $browser
+     * @return TestResponse<Response>
+     */
+    private function getProfile(array $browser, string $uri = '/api/profile'): TestResponse
+    {
+        $this->newBrowserRequest();
+
+        return $this->withCredentials()
+            ->withCookie(Passport::cookie(), $browser['token'])
+            ->withHeader('X-CSRF-TOKEN', $browser['csrf'])
+            ->getJson($uri);
     }
 
     /**

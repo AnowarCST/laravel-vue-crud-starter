@@ -79,12 +79,18 @@ test('changing the password requires the current password', async ({ browser, pa
 
 // The change goes through the API, but the browser session that made it must
 // stay signed in (App\Http\Middleware\KeepSessionAfterPasswordChange); the
-// account's other sessions are signed out on their next page load.
+// account's other sessions are signed out on their next page load. The API
+// cookie issued before the change stops working, and the browser receives a
+// fresh one (App\Http\Middleware\RejectStaleApiTokenCookie).
 test('changing the password keeps the current session signed in', async ({ browser, page }) => {
     const account = await createAccount(browser);
     await login(page, account);
     await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto('/profile');
+
+    const csrf = await page.locator('meta[name="csrf-token"]').getAttribute('content');
+    const oldApiCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'laravel_token');
+    expect(oldApiCookie, 'the laravel_token cookie before the change').toBeDefined();
 
     const newPassword = randomPassword();
     await page.getByLabel('Current password').fill(account.password);
@@ -92,6 +98,19 @@ test('changing the password keeps the current session signed in', async ({ brows
     await page.getByLabel('Confirm new password').fill(newPassword);
     await page.getByRole('button', { name: 'Change password' }).click();
     await expectToast(page, 'Password Has been updated');
+
+    await test.step('the page keeps calling the API with its fresh cookie', async () => {
+        expect((await apiRequest(page, 'GET', '/api/profile')).status).toBe(200);
+    });
+
+    await test.step('the cookie from before the change is rejected', async () => {
+        const oldContext = await browser.newContext({ storageState: { cookies: [oldApiCookie], origins: [] } });
+        const response = await oldContext.request.get('/api/profile', {
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+        });
+        await oldContext.close();
+        expect(response.status()).toBe(401);
+    });
 
     await page.reload();
     await expect(page).toHaveURL(/\/profile$/, { timeout: 5_000 });

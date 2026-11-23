@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\RejectStaleApiTokenCookie;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -27,6 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // The SPA calls /api/* with the "laravel_token" cookie issued here and
         // the X-CSRF-TOKEN header; the "auth:api" (Passport) guard validates both.
         $middleware->web(append: [CreateFreshApiToken::class]);
+
+        // A laravel_token cookie issued before the last password change no
+        // longer authenticates API requests. This has to run before the guard.
+        $middleware->api(prepend: [RejectStaleApiTokenCookie::class]);
+        $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: RejectStaleApiTokenCookie::class);
 
         // Rate limit every API route (limiter defined in AppServiceProvider).
         $middleware->throttleApi('api');

@@ -106,6 +106,14 @@ flowchart LR
 - The `api` guard (driver `passport`) accepts either a bearer token or the
   `laravel_token` cookie. The cookie is only accepted together with a
   matching CSRF token; otherwise the request is unauthenticated.
+- The cookie is a signed JWT that cannot be revoked, so
+  `App\Auth\PasswordBoundApiTokenCookieFactory` (bound in place of
+  Passport's `ApiTokenCookieFactory`) adds a `pwd` claim: an HMAC of the
+  password hash, keyed with the key Passport signs the cookie with.
+  `RejectStaleApiTokenCookie`, prepended to the `api` group and run before
+  authentication, drops a cookie whose claim does not match the current
+  password, so the request is unauthenticated (`401`) after a password
+  change.
 - The axios response interceptor sends the browser to `/login` on `401` or
   `419`, and to `/email/verify` on a `403` whose message is
   `Your email address is not verified.`.
@@ -168,7 +176,7 @@ flowchart LR
 | `app/Http/Responses/ApiResponse.php` | The `{success, data, message}` envelope of successful API responses. |
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
-| `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers), `AuthorizeApiDocs` and `KeepSessionAfterPasswordChange` (keeps the browser that changed its password signed in). |
+| `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers), `AuthorizeApiDocs` and `KeepSessionAfterPasswordChange` (keeps the browser that changed its password signed in) and `RejectStaleApiTokenCookie` (rejects API cookies issued before a password change). |
 | `app/Http/Requests/` | Form Requests: `Categories/CategoryRequest`, `Tags/TagRequest`, `Products/ProductRequest`, `Products/ProductIndexRequest`, `Products/ProductImageRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
 | `app/Enums/` | `UserType` (`admin`, `user`), `ProductStatus` (`active`, `draft`, `archived`) and `StockLevel` (the `in`, `low` and `out` values of the product list's `stock` filter). |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
@@ -255,7 +263,9 @@ Details and operational advice are in [SECURITY.md](SECURITY.md).
   `bootstrap/app.php`, browser sessions that signed in with the old password
   are signed out when they next load a page. The session that changed its
   own password on the Profile page stays signed in under a new session id:
-  `KeepSessionAfterPasswordChange` stores the new password hash in it.
+  `KeepSessionAfterPasswordChange` stores the new password hash in it and
+  sends a fresh `laravel_token` cookie. API cookies issued before the change
+  are rejected (`RejectStaleApiTokenCookie`).
   Deleting an account also revokes its tokens. The forgot-password form
   answers the same way whether or not the email exists.
 - **Uploads.** `POST /api/product/upload` accepts JPEG, PNG and WebP images

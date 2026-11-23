@@ -71,9 +71,11 @@ reported to those projects directly.
   with `app:create-admin` are verified automatically. If a user mistypes a new
   address, an administrator can correct it on the Users page, and the user can
   then request a new verification link.
-- Changing a password revokes the user's OAuth access and refresh tokens and
-  signs out their other browser sessions. The browser that changed its own
-  password on the Profile page stays signed in, under a new session id.
+- Changing a password revokes the user's OAuth access and refresh tokens,
+  makes the `laravel_token` API cookies issued before the change invalid,
+  and signs out their other browser sessions. The browser that changed its
+  own password on the Profile page stays signed in, under a new session id
+  and with a new API cookie.
 
 ### File uploads
 

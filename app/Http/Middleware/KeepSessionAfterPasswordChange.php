@@ -8,6 +8,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Passport\ApiTokenCookieFactory;
 use Laravel\Passport\TransientToken;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -26,8 +27,9 @@ use Symfony\Component\HttpFoundation\Response;
  * signed in with the current password and issued the CSRF token the request
  * carries, and the password changed during the request, it stores the new
  * password hash in that session and gives the session a new id, as
- * SessionGuard::login() does. Other sessions keep the old hash and are signed
- * out on their next page load. Bearer-token requests stay stateless.
+ * SessionGuard::login() does, and sends a fresh laravel_token cookie for the
+ * new password. Other sessions keep the old hash and are signed out on their
+ * next page load. Bearer-token requests stay stateless.
  *
  * It must run after "auth:api": EncryptCookies decrypts every cookie, and
  * Passport's guard decrypts laravel_token itself.
@@ -43,6 +45,7 @@ final class KeepSessionAfterPasswordChange
     public function __construct(
         private readonly EncryptCookies $encryptCookies,
         private readonly StartSession $startSession,
+        private readonly ApiTokenCookieFactory $cookieFactory,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -83,6 +86,10 @@ final class KeepSessionAfterPasswordChange
         if ($isThisBrowsersSession && $user->getAuthPassword() !== $oldPassword) {
             $session->put($hashKey, $guard->hashPasswordForCookie($user->getAuthPassword()));
             $session->migrate(true);
+
+            // The laravel_token cookie the browser has was issued for the old
+            // password (RejectStaleApiTokenCookie); give it a fresh one.
+            $response->headers->setCookie($this->cookieFactory->make($user->id, (string) $session->token()));
         }
 
         return $response;

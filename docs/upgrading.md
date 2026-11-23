@@ -42,6 +42,10 @@ existing installation.
    Existing tokens may need to be re-issued. Databases created by Passport 10
    use integer client IDs: set `PASSPORT_CLIENT_UUIDS=false`, and run
    `php artisan passport:hash` once to hash existing client secrets.
+   The SPA's `laravel_token` cookie now carries a claim derived from the
+   password, and cookies without it are rejected, so a dashboard tab that was
+   open during the upgrade is sent to `/login` once and, while its session is
+   still valid, straight back to the dashboard with a new cookie.
 9. **Email verification is now required** for self-registered accounts, so
    configure `MAIL_*` with a working mail server. The migration
    `2026_11_23_000002_mark_existing_users_as_verified` marks all existing

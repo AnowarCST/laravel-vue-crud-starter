@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\PasswordBoundApiTokenCookieFactory;
 use App\Models\User;
 use App\Rules\PasswordByteLength;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Passport\ApiTokenCookieFactory;
 use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
@@ -82,6 +84,11 @@ class AppServiceProvider extends ServiceProvider
         // Databases created with Passport <= 12 migrations use integer client
         // ids; set PASSPORT_CLIENT_UUIDS=false for those until migrated.
         Passport::$clientUuids = (bool) config('passport.client_uuids', true);
+
+        // The SPA's laravel_token cookie carries a claim derived from the
+        // password hash, so a password change invalidates the cookies issued
+        // before it (see App\Http\Middleware\RejectStaleApiTokenCookie).
+        $this->app->bind(ApiTokenCookieFactory::class, PasswordBoundApiTokenCookieFactory::class);
 
         Passport::tokensExpireIn(now()->addDays(15));
         Passport::refreshTokensExpireIn(now()->addDays(30));

@@ -73,6 +73,7 @@ touch the MySQL data. The E2E stack is a separate throwaway stack on ports
 | `app/Models/`, `app/Policies/`, `app/Enums/` | Models with `#[UsePolicy]`, one policy per model, backed enums |
 | `app/Providers/AppServiceProvider.php` | Rate limiters, Passport settings, gates, password rule |
 | `app/Http/Middleware/SecurityHeaders.php` | CSP and other security headers |
+| `app/Http/Middleware/`, `app/Auth/` | Password-change handling for the SPA session and the `laravel_token` cookie |
 | `bootstrap/app.php` | Middleware order, exception rendering |
 | `routes/api.php`, `routes/web.php` | API routes (prefix `/api`), web and SPA routes |
 | `resources/js/` | Vue SPA, the `/docs` viewer, guest-page scripts |

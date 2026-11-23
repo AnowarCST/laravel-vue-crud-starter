@@ -25,8 +25,9 @@ info:
       cookie. Requests that send this cookie must also send the session's CSRF
       token in the `X-CSRF-TOKEN` header (or the `XSRF-TOKEN` cookie value in
       `X-XSRF-TOKEN`). If the CSRF token is missing or wrong, the request is
-      treated as unauthenticated (`401`). This is how the dashboard and the
-      "Try it out" button on `/docs` call the API.
+      treated as unauthenticated (`401`). A cookie issued before the
+      account's password last changed is rejected the same way. This is how
+      the dashboard and the "Try it out" button on `/docs` call the API.
 
     If both are present, the bearer token is used.
 
@@ -175,8 +176,10 @@ paths:
         is revoked, including the bearer token used for this request. Browser
         sessions that signed in with the old password are signed out the next
         time they load a page (Laravel's `AuthenticateSession` middleware),
-        except the browser session that sent this request with the
-        `laravel_token` cookie: it stays signed in under a new session id.
+        and `laravel_token` cookies issued before the change are rejected
+        with `401`. The browser session that sent this request with the
+        `laravel_token` cookie stays signed in under a new session id, and
+        the response sets a new `laravel_token` cookie for it.
       requestBody:
         required: true
         content:
@@ -1055,7 +1058,8 @@ components:
       description: |
         Encrypted, HttpOnly cookie that Passport's `CreateFreshApiToken`
         middleware sets on `GET` page loads for a signed-in browser session.
-        Only valid together with `csrfToken`.
+        Only valid together with `csrfToken`, and only until the account's
+        password changes.
     csrfToken:
       type: apiKey
       in: header
