@@ -1,157 +1,160 @@
-# Security Policy
+# Security policy
 
 ## Supported versions
 
+Only the latest commit on `main` receives security fixes. This project is a
+starter template: once you copy or fork it, keeping your copy up to date is
+your responsibility.
+
 | Version | Supported |
 | --- | --- |
-| `main` (Laravel 13, PHP 8.5, Passport 13, Vue 3 + Vite) | Yes |
-| Laravel 8 / Vue 2 / Laravel Mix releases (before the 2026 hardening) | No. Upgrade, see [README](README.md#upgrading-from-the-laravel-8-version) |
+| `main` (PHP 8.5, Laravel 13, Passport 13, Vue 3, Vite) | Yes |
+| Releases built on Laravel 8, Vue 2 or Laravel Mix | No. See [Upgrading from the Laravel 8 version](README.md#upgrading-from-the-laravel-8-version) |
 
-Only the latest commit on `main` receives security fixes. This is a starter
-template: once you fork it, keeping your copy patched is your responsibility.
+### Minimum safe dependency versions
+
+These are the lowest versions that contain fixes for recent critical or
+high-severity advisories that affect this stack. `main` is above all of them.
+If you maintain a fork, do not go below these versions.
+
+| Component | Minimum version | Advisories fixed |
+| --- | --- | --- |
+| PHP | 8.5.12 (or 8.4.27, 8.3.36, 8.2.35) | CVE-2026-109618, CVE-2026-109619 ("PHP2Shell", unauthenticated remote code execution) |
+| `laravel/framework` | 13.29.0 | CVE-2026-114509 (authentication bypass), CVE-2026-114508, CVE-2026-48019 |
+| `laravel/passport` | 13.7.2 | CVE-2026-39976 (client credentials token treated as a user) |
+
+PHP 8.1 and older are end of life and have no official fix for PHP2Shell.
 
 ## Reporting a vulnerability
 
-Please **do not open a public issue** for security problems.
+Please **do not open a public issue, discussion or pull request** for a
+security problem.
 
-Report privately through GitHub Security Advisories:
-**Security** tab, then **Report a vulnerability**
-(`https://github.com/AnowarCST/laravel-vue-crud-starter/security/advisories/new`).
+Report it privately through GitHub instead:
+[**Report a vulnerability**](https://github.com/AnowarCST/laravel-vue-crud-starter/security/advisories/new)
+(the **Security** tab, then **Report a vulnerability**).
 
-Include affected version or commit, reproduction steps or a proof of concept,
-and the impact you observed. You should get an acknowledgement within 7 days.
-Fixes are developed in a private advisory fork and disclosed together with the
-release. Credit is given unless you ask otherwise.
+Please include:
 
-Vulnerabilities in Laravel, Passport, Vue or other dependencies should be
-reported to those projects directly.
+- the commit or version you tested,
+- the steps to reproduce the problem, or a proof of concept,
+- what an attacker could do with it.
 
-## Security best practices
+What happens next:
 
-### Secrets and `.env`
+1. We acknowledge your report within 7 days.
+2. We confirm the problem and agree on its severity with you.
+3. We prepare a fix in a private security advisory. You are welcome to review
+   it.
+4. We publish the fix and the advisory at the same time and credit you, unless
+   you prefer to stay anonymous.
 
-- `.env` is gitignored and must never be committed, baked into an image, or
-  pasted into issues. `.env.example` only holds empty placeholders. The Docker
-  build context excludes `.env*`.
-- Generate long random values for `DB_PASSWORD` and `DB_ROOT_PASSWORD`, for
-  example with `openssl rand -base64 32`. `docker compose` refuses to start
-  while they are empty. The application connects as `DB_USERNAME`, never as
-  `root`.
-- **APP_KEY** encrypts sessions and cookies. Generate it once with
-  `php artisan key:generate`. To rotate it, move the old key to
-  `APP_PREVIOUS_KEYS` (comma separated), set a new `APP_KEY`, and deploy. After
-  every user has re-authenticated, remove the old key.
-- **Passport keys**: `php artisan passport:keys` writes
-  `storage/oauth-private.key` and `storage/oauth-public.key` (gitignored). In
-  production, provide them through `PASSPORT_PRIVATE_KEY`/`PASSPORT_PUBLIC_KEY`
-  or a mounted secret. Rotating them (`php artisan passport:keys --force`)
-  invalidates every issued access token, so plan it as a forced logout. Rotate
-  immediately if a key may have leaked.
+### Scope
 
-### Accounts and administrators
+In scope: the code in this repository, its default configuration, the Docker
+images built from `docker/Dockerfile`, and the GitHub Actions workflows.
 
-- There is **no seeded default administrator**. The old
-  `admin@gmail.com` / `123456` account no longer exists. Create admins
-  interactively:
+Out of scope: vulnerabilities in Laravel, Passport, Vue, PHP or other
+dependencies (report those to the project concerned), problems that need an
+already compromised server or administrator account, and findings from
+automated scanners without a demonstrated impact.
 
-  ```bash
-  docker compose exec app php artisan app:create-admin
-  ```
+## How the application protects itself
 
-  The password is prompted for, never accepted as a command-line argument, so
-  it does not end up in shell history or process lists.
-- Public registration always creates **non-admin** users. A role field sent in
-  the request is ignored.
-- Passwords must be at least 12 characters. Only administrators can list,
-  create, update or delete accounts. Administrators cannot change their own
-  role or delete their own account.
-- Self-registered accounts must verify their email address before they can
-  use the dashboard or the API. Changing the email address on the profile page
-  requires verifying the new address. Accounts created by an administrator or
-  with `app:create-admin` are verified automatically. If a user mistypes a new
-  address, an administrator can correct it on the Users page, and the user can
-  then request a new verification link.
+**Accounts**
+
+- There is no default administrator. Create one interactively with
+  `php artisan app:create-admin`. The password is typed at a prompt and is
+  never accepted as a command-line argument.
+- Self-registration always creates a regular user. A role sent in the request
+  is ignored.
+- Self-registered users must verify their email address before they can use
+  the dashboard or the API. Changing the email address requires verifying the
+  new one. Accounts created by an administrator are verified automatically.
+- Passwords must be at least 12 characters (and at most 72 bytes, the bcrypt
+  limit).
 - Changing a password revokes the user's OAuth access and refresh tokens and
   signs out their other browser sessions.
 
-### File uploads
+**Authorization**
 
-- Only images (`jpg`, `jpeg`, `png`, `webp`, max 5 MB, max 4096x4096 px) are
-  accepted. Type, extension and content are all validated server side.
-- Every accepted image is decoded and re-encoded on the server (same format).
-  This removes metadata such as EXIF and GPS data and any data hidden inside
-  or appended to the file. Files that cannot be decoded as images are
-  rejected.
-- Files are stored with random, server-generated names on the `public` disk
-  (`storage/app/public/uploads`). They are served through the `public/storage`
-  symlink created by `php artisan storage:link`.
-- Apache never executes anything from upload directories (PHP engine off).
-  Script, HTML, SVG and JS files there are denied, and all responses carry
-  `X-Content-Type-Options: nosniff` so an uploaded file cannot be sniffed as
-  HTML.
+- Only administrators can list, create, update or delete accounts.
+  Administrators cannot change their own role or delete their own account.
+- Only administrators can delete products, categories and tags.
 
-### HTTP headers and transport
+**Uploads**
 
-- Laravel middleware sends a nonce-based Content-Security-Policy,
-  `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
-  `Permissions-Policy` and `Cross-Origin-Opener-Policy`. It adds HSTS only on
-  HTTPS requests. Apache adds `nosniff` for static files, hides its version
-  (`ServerTokens Prod`, `ServerSignature Off`) and disables `TRACE`.
-- CORS only allows `APP_URL` plus any origins you list in
-  `CORS_ALLOWED_ORIGINS`.
-- If you run behind a load balancer or reverse proxy, set `TRUSTED_PROXIES` to
-  its address or CIDR only.
+- Only JPEG, PNG and WebP images are accepted (5 MB and 4096 x 4096 pixels at
+  most). Type, extension and content are checked on the server.
+- Every image is decoded and re-encoded on the server. This removes metadata
+  such as EXIF and GPS data, and anything hidden inside or appended to the
+  file.
+- Files get random names and are stored on the `public` disk
+  (`storage/app/public/uploads`). The web server never executes files there
+  and sends them with `X-Content-Type-Options: nosniff`.
 
-### Rate limiting
+**HTTP**
 
-Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
-5 failures per email and IP), registration (5/min per IP), password reset
-(5/min per IP and 10/hour per email) and the API (60/min per user or IP).
+- Every response carries a Content-Security-Policy with a per-request nonce,
+  plus `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+  `Permissions-Policy` and `Cross-Origin-Opener-Policy`. HSTS is added on
+  HTTPS requests.
+- CORS allows only `APP_URL` and the origins listed in `CORS_ALLOWED_ORIGINS`.
+- Rate limits apply to login (10 per minute per IP, and a lockout after 5
+  failures per email and IP), registration (5 per minute per IP), password
+  reset (5 per minute per IP and 10 per hour per email) and the API (60 per
+  minute per user or IP).
 
-### Dependency auditing
+**Secrets**
 
-- CI (`.github/workflows/ci.yml`) runs `composer validate --strict`,
-  `composer audit`, `npm audit --audit-level=moderate`, Pint, Larastan
-  (level 9), ESLint, Prettier, the PHPUnit suite, a production Vite build and a
-  production Docker build with an `/up` smoke test.
-- CodeQL (`.github/workflows/codeql.yml`) scans JavaScript/TypeScript and the
-  GitHub Actions workflows on every PR and weekly.
-- Dependabot (`.github/dependabot.yml`) proposes weekly grouped updates for
-  Composer, npm, Docker images and GitHub Actions. Third-party actions are
-  pinned to full commit SHAs.
-- Locally: `composer audit` and `npm audit` (or `npm run audit:security`).
+- `.env` is never committed or copied into Docker images. `.env.example`
+  contains empty placeholders only.
+- `APP_KEY` encrypts sessions and cookies. To rotate it, move the old key to
+  `APP_PREVIOUS_KEYS`, set a new `APP_KEY` and deploy. Remove the old key once
+  every user has signed in again.
+- Passport keys (`storage/oauth-*.key`, ignored by git) sign access tokens.
+  In production, provide them through `PASSPORT_PRIVATE_KEY` and
+  `PASSPORT_PUBLIC_KEY` or a mounted secret. Rotating them
+  (`php artisan passport:keys --force`) signs everyone out of the API.
 
-### Docker hardening
+**Containers**
 
-- Base images are pinned to exact patch tags.
-- The production image (`docker/Dockerfile`, target `prod`) contains no
-  Composer, Node, git or dev dependencies. Application code is owned by root
-  and read-only. Only `storage/` and `bootstrap/cache/` are writable by
-  `www-data`.
-- Apache runs entirely as `www-data` on port 8080. Only `public/` is served.
-  `vendor/`, `storage/`, dotfiles and backup/config file types are denied.
-- `docker-compose.yml` binds ports to `127.0.0.1` only, does not publish MySQL
-  (opt in with `docker-compose.db-port.yml`), drops Linux capabilities and
-  sets `no-new-privileges`.
-- OPcache in production does not re-check file timestamps, so code changes
-  require a new image.
+- Base images are pinned to exact versions and updated by Dependabot.
+- The production image has no Composer, Node.js or git. Application code is
+  owned by root and read-only. The web server runs as `www-data` and can only
+  write to `storage/` and `bootstrap/cache/`.
+- `docker-compose.yml` publishes ports on `127.0.0.1` only, does not publish
+  MySQL, drops Linux capabilities and sets `no-new-privileges`.
+- PHP runs with `expose_php`, `display_errors` and session upload progress
+  turned off.
 
-### Production checklist
+## Dependency and code checks
 
-- [ ] `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=warning` (or higher)
-- [ ] Unique `APP_KEY`, strong DB credentials, Passport keys provisioned as
-      secrets
-- [ ] HTTPS terminates in front of the app, `APP_URL` uses `https://`, and
-      `SESSION_SECURE_COOKIE=true`
-- [ ] `TRUSTED_PROXIES` set to your proxy only; `CORS_ALLOWED_ORIGINS` minimal
-- [ ] `php artisan config:cache` (the prod image runs `php artisan optimize`
-      on start; set `LARAVEL_OPTIMIZE=false` to skip)
-- [ ] `php artisan storage:link` (done at image build) and only `storage/` plus
-      `bootstrap/cache/` writable by the web user
-- [ ] Database backup taken before `php artisan migrate --force`
-- [ ] At least one admin created with `php artisan app:create-admin`; no test
-      accounts left
-- [ ] `MAIL_*` points to a real mail server, so verification and password
-      reset emails are delivered
-- [ ] Database port not reachable from the internet
-- [ ] CI green, including `composer audit` and `npm audit`
+Every pull request runs:
+
+- `composer audit` and `npm audit`,
+- Pint, Larastan (level 9), ESLint and Prettier,
+- the PHPUnit test suite,
+- a production build of the frontend and of the Docker image,
+- CodeQL analysis of the JavaScript code and the GitHub Actions workflows.
+
+Dependabot proposes weekly updates for Composer, npm, Docker images and GitHub
+Actions. Third-party GitHub Actions are pinned to full commit SHAs.
+
+## Production checklist
+
+- [ ] `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=warning` or higher.
+- [ ] A unique `APP_KEY`, strong database passwords, and Passport keys
+      provided as secrets.
+- [ ] HTTPS in front of the application, `APP_URL` starting with `https://`,
+      and `SESSION_SECURE_COOKIE=true`.
+- [ ] `TRUSTED_PROXIES` set to your proxy only, and `CORS_ALLOWED_ORIGINS`
+      as short as possible.
+- [ ] `MAIL_*` pointing to a real mail server, so verification and password
+      reset emails are delivered.
+- [ ] PHP, `laravel/framework` and `laravel/passport` at or above the minimum
+      versions listed above.
+- [ ] A database backup taken before `php artisan migrate --force`.
+- [ ] At least one administrator created with `php artisan app:create-admin`,
+      and no test accounts left.
+- [ ] The database port not reachable from the internet.
