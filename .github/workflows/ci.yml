@@ -19,7 +19,7 @@ env:
 
 jobs:
   php:
-    name: PHP (composer audit + tests)
+    name: PHP (style, static analysis, audit, tests)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -63,11 +63,17 @@ jobs:
           php artisan key:generate --no-interaction
           php artisan passport:keys --no-interaction
 
+      - name: Check code style (Pint)
+        run: composer lint
+
+      - name: Static analysis (Larastan, level 9)
+        run: composer analyse
+
       - name: Run tests
         run: php artisan test
 
   frontend:
-    name: Frontend (npm audit + Vite build)
+    name: Frontend (lint, format, audit, build)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -84,6 +90,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-fund
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Check formatting (Prettier)
+        run: npm run format:check
 
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
