@@ -1,0 +1,171 @@
+# Azure Pipelines template (disabled).
+#
+# Every line of this file is a comment, and Azure Pipelines only runs a YAML
+# file that a pipeline points at, so nothing runs until you enable it. This
+# is a starting point, not a tested pipeline: the uncommented YAML was
+# parsed and checked against Microsoft's Azure Pipelines YAML schema, and
+# the check commands are the same as in the GitHub Actions CI, but this file
+# has not been run on Azure DevOps.
+#
+# The live azure-pipelines.yml at the repository root is a separate,
+# smaller pipeline that only runs when started by hand; see its header.
+#
+# What it does, once enabled
+#   - Checks stage: the same checks as .github/workflows/ci.yml, inside the
+#     project's own images from docker/Dockerfile:
+#       PHP:      composer validate --strict, composer install,
+#                 composer audit, composer lint (Pint),
+#                 composer analyse (Larastan), php artisan test
+#       Frontend: npm ci, npm run lint, npm run format:check,
+#                 npm audit --audit-level=moderate, npm run build
+#   - Image stage (commits on main only): builds the production image
+#     (target "prod") and pushes it to Azure Container Registry, tagged with
+#     the commit SHA.
+#
+# How to enable
+#   1. Create the registry once, for example:
+#        az acr create --resource-group <group> --name <registry> --sku Basic
+#   2. In Azure DevOps: Project settings > Service connections > New >
+#      Docker Registry > Azure Container Registry. Pick the registry, and
+#      choose Workload Identity federation if it is offered, so no password
+#      is stored. Put the connection's name in acrServiceConnection below.
+#   3. Use this file in one of two ways:
+#        - replace the root azure-pipelines.yml with it (keep the header of
+#          the root file in mind: it explains the GitHub status check), or
+#        - keep it here and create a new pipeline: Pipelines > New pipeline >
+#          GitHub > this repository > Existing Azure Pipelines YAML file >
+#          /deploy/azure/azure-pipelines.yml.
+#   4. Remove the "# " at the start of every line below the line of dashes.
+#   5. On the first run, approve the pipeline's use of the service
+#      connection when Azure DevOps asks.
+#
+# Notes
+#   - Do not let pull requests from forks use the service connection. Keep
+#     "pr: none", or leave "Make secrets available to builds of forks" off
+#     in the pipeline's trigger settings (Azure DevOps default).
+#   - Deploying is not included. For example, to roll a new image out to
+#     Azure Container Apps, add a stage with an AzureCLI@2 task that runs
+#     "az containerapp update --name <app> --resource-group <group>
+#     --image <registry>.azurecr.io/laravel-vue-crud-starter:<tag>".
+#     Give the app its configuration as environment variables and secrets
+#     (APP_KEY, DB_*, PASSPORT_*), never through the image, and run
+#     migrations by hand after a backup (SECURITY.md, production checklist).
+# ------------------------------------------------------------------------
+# trigger:
+#   branches:
+#     include:
+#       - main
+#
+# # GitHub Actions checks pull requests; add a "pr:" section to also run
+# # the Checks stage on them. The Image stage never runs for pull requests.
+# pr: none
+#
+# variables:
+#   DOCKER_BUILDKIT: "1"
+#   # Name of the "Docker Registry" service connection to your registry.
+#   acrServiceConnection: replace-with-your-acr-service-connection
+#   imageRepository: laravel-vue-crud-starter
+#
+# pool:
+#   vmImage: ubuntu-24.04
+#
+# stages:
+#   - stage: Checks
+#     jobs:
+#       # Same as the "php" job in .github/workflows/ci.yml, in the PHP 8.5
+#       # image used for local development.
+#       - job: php
+#         displayName: PHP (style, static analysis, audit, tests)
+#         timeoutInMinutes: 20
+#         steps:
+#           - checkout: self
+#             persistCredentials: false
+#
+#           - script: docker build --target dev --file docker/Dockerfile --tag ci-php:dev .
+#             displayName: Build the PHP 8.5 image (target dev)
+#
+#           - script: |
+#               docker run --rm --user root \
+#                 --env COMPOSER_ALLOW_SUPERUSER=1 \
+#                 --volume "$(Build.SourcesDirectory)":/var/www/html \
+#                 --workdir /var/www/html \
+#                 --entrypoint sh \
+#                 ci-php:dev -euc '
+#                   composer validate --strict
+#                   composer install --no-interaction --no-progress --prefer-dist
+#                   composer audit --locked
+#                   cp .env.example .env
+#                   php artisan key:generate --no-interaction
+#                   php artisan passport:keys --no-interaction
+#                   composer lint
+#                   composer analyse
+#                   php artisan test
+#                 '
+#             displayName: Composer validate/audit, Pint, Larastan, PHPUnit
+#
+#       # Same as the "frontend" job, in the Node 26 image.
+#       - job: frontend
+#         displayName: Frontend (lint, format, audit, build)
+#         timeoutInMinutes: 15
+#         steps:
+#           - checkout: self
+#             persistCredentials: false
+#
+#           - script: docker build --target node-dev --file docker/Dockerfile --tag ci-node:dev .
+#             displayName: Build the Node 26 image (target node-dev)
+#
+#           - script: |
+#               docker run --rm --user root \
+#                 --volume "$(Build.SourcesDirectory)":/app \
+#                 --workdir /app \
+#                 --entrypoint sh \
+#                 ci-node:dev -euc '
+#                   npm ci --no-fund
+#                   npm run lint
+#                   npm run format:check
+#                   npm audit --audit-level=moderate
+#                   npm run build
+#                 '
+#             displayName: ESLint, Prettier, npm audit, Vite build
+#
+#   # Builds the production image and pushes it to Azure Container Registry,
+#   # only for commits on main.
+#   - stage: Image
+#     dependsOn: Checks
+#     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.Reason'], 'PullRequest'))
+#     jobs:
+#       - job: push
+#         displayName: Build and push the prod image
+#         timeoutInMinutes: 30
+#         steps:
+#           - checkout: self
+#             persistCredentials: false
+#
+#           - task: Docker@2
+#             displayName: Log in to Azure Container Registry
+#             inputs:
+#               command: login
+#               containerRegistry: $(acrServiceConnection)
+#
+#           # "buildAndPush" ignores extra arguments such as --target, so
+#           # build and push are separate steps.
+#           - task: Docker@2
+#             displayName: Build the prod image
+#             inputs:
+#               command: build
+#               containerRegistry: $(acrServiceConnection)
+#               repository: $(imageRepository)
+#               Dockerfile: docker/Dockerfile
+#               buildContext: $(Build.SourcesDirectory)
+#               arguments: --target prod
+#               tags: |
+#                 $(Build.SourceVersion)
+#
+#           - task: Docker@2
+#             displayName: Push the prod image
+#             inputs:
+#               command: push
+#               containerRegistry: $(acrServiceConnection)
+#               repository: $(imageRepository)
+#               tags: |
+#                 $(Build.SourceVersion)
