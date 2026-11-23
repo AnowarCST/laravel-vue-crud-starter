@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(docker compose ps)",
+      "Bash(docker compose exec app composer lint)",
+      "Bash(docker compose exec -T app composer lint)",
+      "Bash(docker compose exec app composer analyse)",
+      "Bash(docker compose exec -T app composer analyse)",
+      "Bash(docker compose exec app php artisan test)",
+      "Bash(docker compose exec -T app php artisan test)",
+      "Bash(npm run lint)",
+      "Bash(npm run format:check)",
+      "Bash(npm run build)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.backup)",
+      "Read(./.env.production)",
+      "Read(./.env.*.local)",
+      "Read(./storage/*.key)",
+      "Read(./tests/e2e/.stack/**)"
+    ]
+  }
+}

@@ -6,9 +6,13 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Testing\TestResponse;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Concerns\AssertsApiResponses;
+use Tests\Concerns\CreatesUsers;
 
 abstract class TestCase extends BaseTestCase
 {
+    use AssertsApiResponses, CreatesUsers;
+
     /**
      * Ephemeral Passport key pair generated once per test process, so the
      * suite never depends on (or creates) storage/oauth-*.key files.

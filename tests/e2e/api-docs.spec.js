@@ -5,7 +5,7 @@ import { storageState } from './support/env.js';
 // tests/e2e/compose.yaml), so /docs follows the production rules: only
 // signed-in administrators with a verified email address may open it. In the
 // local environment (APP_ENV=local) it is open to everyone instead; that
-// case is covered by tests/Feature/ApiDocsTest.php.
+// case is covered by tests/Feature/Docs/ApiDocsTest.php.
 
 test.describe('as an administrator', () => {
     test.use({ storageState: storageState.admin });

@@ -2,10 +2,11 @@
 
 namespace App\Http\Requests\Users;
 
+use App\Enums\UserType;
 use App\Models\User;
-use App\Rules\PasswordByteLength;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * Administrator create/update of accounts. Authorization runs before any
@@ -51,19 +52,37 @@ class UserRequest extends FormRequest
         $required = $creating ? 'required' : 'sometimes';
         $target = $creating ? null : $this->target();
 
-        $typeRules = [$required, 'string', Rule::in(User::TYPES)];
+        $type = Rule::enum(UserType::class);
         if ($target && $target->is($this->user())) {
             // Administrators cannot demote (or otherwise change) themselves.
-            $typeRules[] = Rule::in([$target->type]);
+            $type->only($target->type);
         }
 
         return [
-            'type' => $typeRules,
+            'type' => [$required, 'string', $type],
             'name' => [$required, 'string', 'max:191'],
             'email' => [$required, 'string', 'email', 'max:191',
                 Rule::unique('users', 'email')->ignore($target?->getKey())],
-            'password' => [$required, 'nullable', 'string', 'min:12', 'max:72', new PasswordByteLength],
+            'password' => [$required, 'nullable', 'string', Password::defaults()],
         ];
+    }
+
+    /**
+     * The validated changes to save on update: name, email and type when
+     * they were sent, and the password only when it is not empty. The type is
+     * not mass assignable, so the caller saves these with forceFill().
+     *
+     * @return array<string, mixed>
+     */
+    public function accountChanges(): array
+    {
+        $changes = $this->safe(['name', 'email', 'type']);
+
+        if ($this->safe()->filled('password')) {
+            $changes['password'] = $this->validated('password');
+        }
+
+        return $changes;
     }
 
     /**
@@ -72,7 +91,7 @@ class UserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'type.in' => 'The selected account type is invalid or cannot be changed for your own account.',
+            'type.enum' => 'The selected account type is invalid or cannot be changed for your own account.',
         ];
     }
 }

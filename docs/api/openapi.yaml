@@ -25,8 +25,9 @@ info:
       cookie. Requests that send this cookie must also send the session's CSRF
       token in the `X-CSRF-TOKEN` header (or the `XSRF-TOKEN` cookie value in
       `X-XSRF-TOKEN`). If the CSRF token is missing or wrong, the request is
-      treated as unauthenticated (`401`). This is how the dashboard and the
-      "Try it out" button on `/docs` call the API.
+      treated as unauthenticated (`401`). A cookie issued before the
+      account's password last changed is rejected the same way. This is how
+      the dashboard and the "Try it out" button on `/docs` call the API.
 
     If both are present, the bearer token is used.
 
@@ -174,7 +175,11 @@ paths:
         On success, every OAuth access token and refresh token of the account
         is revoked, including the bearer token used for this request. Browser
         sessions that signed in with the old password are signed out the next
-        time they load a page (Laravel's `AuthenticateSession` middleware).
+        time they load a page (Laravel's `AuthenticateSession` middleware),
+        and `laravel_token` cookies issued before the change are rejected
+        with `401`. The browser session that sent this request with the
+        `laravel_token` cookie stays signed in under a new session id, and
+        the response sets a new `laravel_token` cookie for it.
       requestBody:
         required: true
         content:
@@ -414,12 +419,12 @@ paths:
                             description: Path on the `public` disk. Send it as `photo` when creating or updating a product.
                           url:
                             type: string
-                            description: Browser URL of the stored image (under `/storage/uploads/`).
+                            description: Root-relative browser URL of the stored image (`/storage/uploads/...`), without scheme or host, so it loads from the origin that serves the page.
               example:
                 success: true
                 data:
                   path: uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
-                  url: http://localhost:8000/storage/uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
+                  url: /storage/uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
                 message: Image uploaded
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -1053,7 +1058,8 @@ components:
       description: |
         Encrypted, HttpOnly cookie that Passport's `CreateFreshApiToken`
         middleware sets on `GET` page loads for a signed-in browser session.
-        Only valid together with `csrfToken`.
+        Only valid together with `csrfToken`, and only until the account's
+        password changes.
     csrfToken:
       type: apiKey
       in: header
@@ -1478,7 +1484,7 @@ components:
           description: Path of the image, either an upload on the `public` disk (for example `uploads/<random>.png`) or a bundled demo image (for example `images/products/ceramic-coffee-mug.webp`).
         photo_url:
           type: [string, 'null']
-          description: Full URL of the image (under `/storage/uploads/` for uploads, under `/images/` for demo images), or null when the product has no photo.
+          description: Root-relative URL of the image, without scheme or host (`/storage/uploads/...` for uploads, `/images/products/...` for demo images), or null when the product has no photo or the stored path is not a safe upload or demo image path.
         created_at:
           $ref: '#/components/schemas/Timestamp'
         updated_at:

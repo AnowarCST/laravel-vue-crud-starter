@@ -77,20 +77,20 @@ test('changing the password requires the current password', async ({ browser, pa
     });
 });
 
-// Known bug, kept visible on purpose. SECURITY.md and bootstrap/app.php say a
-// password change signs out the account's *other* sessions. In practice the
-// session that made the change is signed out too: the change goes through the
-// API guard, so the web session keeps the old password hash, and Laravel's
-// AuthenticateSession middleware logs it out on the next page load.
-// When this is fixed, the test passes, Playwright reports an unexpected pass,
-// and the test.fail() line should be removed.
+// The change goes through the API, but the browser session that made it must
+// stay signed in (App\Http\Middleware\KeepSessionAfterPasswordChange); the
+// account's other sessions are signed out on their next page load. The API
+// cookie issued before the change stops working, and the browser receives a
+// fresh one (App\Http\Middleware\RejectStaleApiTokenCookie).
 test('changing the password keeps the current session signed in', async ({ browser, page }) => {
-    test.fail(true, 'Known bug: changing your own password signs out the current session as well');
-
     const account = await createAccount(browser);
     await login(page, account);
     await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto('/profile');
+
+    const csrf = await page.locator('meta[name="csrf-token"]').getAttribute('content');
+    const oldApiCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'laravel_token');
+    expect(oldApiCookie, 'the laravel_token cookie before the change').toBeDefined();
 
     const newPassword = randomPassword();
     await page.getByLabel('Current password').fill(account.password);
@@ -98,6 +98,19 @@ test('changing the password keeps the current session signed in', async ({ brows
     await page.getByLabel('Confirm new password').fill(newPassword);
     await page.getByRole('button', { name: 'Change password' }).click();
     await expectToast(page, 'Password Has been updated');
+
+    await test.step('the page keeps calling the API with its fresh cookie', async () => {
+        expect((await apiRequest(page, 'GET', '/api/profile')).status).toBe(200);
+    });
+
+    await test.step('the cookie from before the change is rejected', async () => {
+        const oldContext = await browser.newContext({ storageState: { cookies: [oldApiCookie], origins: [] } });
+        const response = await oldContext.request.get('/api/profile', {
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+        });
+        await oldContext.close();
+        expect(response.status()).toBe(401);
+    });
 
     await page.reload();
     await expect(page).toHaveURL(/\/profile$/, { timeout: 5_000 });

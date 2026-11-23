@@ -5,7 +5,7 @@
 | Version | Supported |
 | --- | --- |
 | `main` (Laravel 13, PHP 8.5, Passport 13, Vue 3 + Vite) | Yes |
-| Laravel 8 / Vue 2 / Laravel Mix releases (before the 2026 hardening) | No. Upgrade, see [README](README.md#upgrading-from-the-laravel-8-version) |
+| Laravel 8 / Vue 2 / Laravel Mix releases (before the 2026 hardening) | No. Upgrade, see [docs/upgrading.md](docs/upgrading.md#upgrading-from-the-laravel-8-version) |
 
 Only the latest commit on `main` receives security fixes. This is a starter
 template: once you fork it, keeping your copy patched is your responsibility.
@@ -71,8 +71,13 @@ reported to those projects directly.
   with `app:create-admin` are verified automatically. If a user mistypes a new
   address, an administrator can correct it on the Users page, and the user can
   then request a new verification link.
-- Changing a password revokes the user's OAuth access and refresh tokens and
-  signs out their other browser sessions.
+- Changing a password revokes the user's OAuth access and refresh tokens,
+  makes the `laravel_token` API cookies issued before the change invalid,
+  and signs out their other browser sessions. The browser that changed its
+  own password on the Profile page stays signed in, under a new session id
+  and with a new API cookie, until that session expires. Its "Remember me"
+  cookie stops working, because the change rotates the remember token, so
+  after the session expires it has to sign in again.
 
 ### File uploads
 
@@ -112,8 +117,10 @@ Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
 
 - CI (`.github/workflows/ci.yml`) runs `composer validate --strict`,
   `composer audit`, `npm audit --audit-level=moderate`, Pint, Larastan
-  (level 9), ESLint, Prettier, the PHPUnit suite, a production Vite build and a
-  production Docker build with an `/up` smoke test.
+  (level 10), ESLint, Prettier, the PHPUnit suite and a production Vite build
+  on every pull request. The production Docker build with an `/up` smoke
+  test (`.github/workflows/docker.yml`), the end-to-end tests and the ZAP
+  scan are opt-in; see [docs/ci-cd.md](docs/ci-cd.md).
 - CodeQL (`.github/workflows/codeql.yml`) scans JavaScript/TypeScript and the
   GitHub Actions workflows on every PR and weekly.
 - Dependabot (`.github/dependabot.yml`) proposes weekly grouped updates for
@@ -125,9 +132,10 @@ Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
 
 - Base images are pinned to exact patch tags.
 - The production image (`docker/Dockerfile`, target `prod`) contains no
-  Composer, Node, git or dev dependencies. Application code is owned by root
-  and read-only. Only `storage/` and `bootstrap/cache/` are writable by
-  `www-data`.
+  Composer, Node, git or dev dependencies, and no tests, repository
+  documentation or AI assistant instructions (`.dockerignore`). Application
+  code is owned by root and read-only. Only `storage/` and `bootstrap/cache/`
+  are writable by `www-data`.
 - Apache runs entirely as `www-data` on port 8080. Only `public/` is served.
   `vendor/`, `storage/`, dotfiles and backup/config file types are denied.
 - `docker-compose.yml` binds ports to `127.0.0.1` only, does not publish MySQL

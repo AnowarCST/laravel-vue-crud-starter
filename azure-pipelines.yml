@@ -1,24 +1,42 @@
-# Azure Pipelines (legacy status check "AnowarCST.laravel-vue-crud-starter").
+# Azure Pipelines: manual runs only.
 #
-# GitHub Actions (.github/workflows/ci.yml) is the primary CI. This pipeline is
-# kept because the Azure Pipelines GitHub integration reports a required-looking
-# check on every PR; deleting the file would make that check fail instead of
-# disappearing. It runs a real backend check using the same pinned PHP 8.5
-# image as local development (docker/Dockerfile, target "dev"):
-# composer validate, install, audit, and the PHPUnit suite (SQLite in memory).
+# GitHub Actions (.github/workflows/) is this project's CI. This repository
+# is still connected to Azure Pipelines, which reads this file, so it must
+# stay a valid pipeline. "trigger: none" and "pr: none" stop it from running
+# on pushes and pull requests, so Azure Pipelines should no longer report
+# the "AnowarCST.laravel-vue-crud-starter" status check on pull requests.
+# If that check is required in the branch protection rules (Settings >
+# Branches or Rules), remove it there, or pull requests will wait for a
+# check that never comes.
 #
-# To retire it: disable the pipeline in Azure DevOps / uninstall the Azure
-# Pipelines GitHub app, then delete this file.
+# The job below is the backend check it ran before: composer validate,
+# install and audit, and the PHPUnit suite, in the PHP 8.5 image used for
+# local development (docker/Dockerfile, target "dev"). To run it, open the
+# pipeline in Azure DevOps and choose "Run pipeline".
+#
+# Run it on every push and pull request again: replace the two "none"
+# lines with
+#   trigger:
+#     branches:
+#       include: [main]
+#   pr:
+#     branches:
+#       include: ["*"]
+# If the pipeline's settings in Azure DevOps override the YAML triggers
+# (Edit > Triggers), those settings win over this file.
+#
+# A full pipeline (all CI checks, then an image pushed to Azure Container
+# Registry) is in deploy/azure/azure-pipelines.yml.
+#
+# Disconnect Azure Pipelines completely: in Azure DevOps, delete or disable
+# the pipeline (Pipelines > the pipeline > ... > Settings > Disabled), and on
+# GitHub remove the "Azure Pipelines" app from the repository (Settings >
+# GitHub Apps, or the account's Settings > Applications > Installed GitHub
+# Apps > Azure Pipelines > Configure). After that, this file can be deleted.
 
-trigger:
-  branches:
-    include:
-      - main
+trigger: none
 
-pr:
-  branches:
-    include:
-      - "*"
+pr: none
 
 pool:
   vmImage: ubuntu-24.04

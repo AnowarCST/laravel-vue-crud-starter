@@ -23,8 +23,9 @@ problem.** Report it privately as described in [SECURITY.md](SECURITY.md)
 
 ## Development setup
 
-Follow [README.md](README.md): "Quick start with Docker (recommended)" or
-"Installing without Docker". The commands below assume the Docker setup. If
+Follow the [README](README.md#quick-start-with-docker) ("Quick start with
+Docker"), or [docs/installation.md](docs/installation.md) to install without
+Docker. The commands below assume the Docker setup. If
 you work without Docker, run the same `composer`, `php artisan` and `npm`
 commands directly.
 
@@ -64,23 +65,26 @@ Useful to know:
   the change is needed, not only what it does.
 - If a change breaks existing installations (configuration, database,
   behaviour), say so in the commit body and add upgrade and rollback steps to
-  the README.
+  [docs/upgrading.md](docs/upgrading.md).
 - Never commit secrets. `.env` is ignored by git; `.env.example` contains
   empty placeholders only.
 
 ## Quality checks
 
-CI (`.github/workflows/ci.yml`) runs all of these on every pull request. Run
-them locally before you push. Two more workflows run on pull requests: the
-end-to-end tests (`.github/workflows/e2e.yml`, every pull request) and the
-OWASP ZAP baseline scan (`.github/workflows/zap.yml`, pull requests to `main`
-that change code or configuration that shapes HTTP responses). See the
-README sections "End-to-end tests" and "Security scan (ZAP)".
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request,
+and CodeQL scans every pull request. Run them locally before you push.
+Three slower workflows are opt-in: the production image build
+(`.github/workflows/docker.yml`), the end-to-end tests
+(`.github/workflows/e2e.yml`) and the OWASP ZAP baseline scan
+(`.github/workflows/zap.yml`). A maintainer starts them on a pull request
+with the `run-docker-build`, `run-e2e` or `run-zap` label, or they run on
+every pull request when the matching repository variable is set. See
+[docs/ci-cd.md](docs/ci-cd.md) and [docs/testing.md](docs/testing.md).
 
 | Check | Command | Fix automatically |
 | --- | --- | --- |
 | PHP code style (Pint) | `docker compose exec app composer lint` | `docker compose exec app composer format` |
-| PHP static analysis (Larastan, level 9) | `docker compose exec app composer analyse` | |
+| PHP static analysis (Larastan, level 10) | `docker compose exec app composer analyse` | |
 | PHP tests (PHPUnit) | `docker compose exec app php artisan test` | |
 | JavaScript and Vue lint (ESLint) | `docker compose --profile dev run --rm node npm run lint` | `npm run lint:fix` |
 | JavaScript and Vue formatting (Prettier) | `docker compose --profile dev run --rm node npm run format:check` | `npm run format` |
@@ -99,7 +103,8 @@ docker run --rm -e REDOCLY_TELEMETRY=off -v "$PWD/docs/api":/spec:ro -w /spec \
 ### End-to-end tests
 
 The Playwright tests in `tests/e2e/` drive the real application in Chromium.
-README.md ("End-to-end tests") explains how to run them. When you write or
+[docs/testing.md](docs/testing.md#end-to-end-tests) explains how to run
+them. When you write or
 change one:
 
 - Make every test create the records it needs (through the API, with the
@@ -119,8 +124,7 @@ change one:
   JavaScript error (`tests/e2e/support/test.js`). Fix the cause; do not
   remove the check.
 - A known bug can be kept visible with `test.fail()` and a comment that
-  explains it, as in `tests/e2e/profile.spec.js`. Remove the marker in the
-  pull request that fixes the bug.
+  explains it. Remove the marker in the pull request that fixes the bug.
 
 Do not lower the Larastan level, add a baseline, or disable lint rules to
 make a check pass. Fix the code instead, or explain in the pull request why
@@ -138,10 +142,10 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    Never make a privilege-bearing column (such as `users.type`) mass
    assignable. Add a factory in `database/factories/` for the tests.
 
-2. **Policy.** Create `app/Policies/WidgetPolicy.php`. Laravel finds it by
-   name, so no registration is needed. Follow the existing rule unless you
-   have a reason not to: any verified account may view, create and update,
-   and only administrators may delete.
+2. **Policy.** Create `app/Policies/WidgetPolicy.php` and link it to the
+   model with `#[UsePolicy(WidgetPolicy::class)]` on the `Widget` class.
+   Follow the existing rule unless you have a reason not to: any verified
+   account may view, create and update, and only administrators may delete.
 
    ```php
    public function delete(User $user, Widget $widget): bool
@@ -150,21 +154,32 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    }
    ```
 
-3. **Form Request.** Create `app/Http/Requests/Widgets/WidgetRequest.php`.
-   `authorize()` only checks that there is a user; the controller does the
-   per-record policy check. Give every string a `max` length, and validate
-   types strictly (for example `integer` and `exists:` for foreign keys).
+3. **Form Request.** Create `app/Http/Requests/Widgets/WidgetRequest.php`,
+   following `CategoryRequest`. `authorize()` checks the policy: `update`
+   for the bound `$this->route('widget')` model, otherwise `create`. Give
+   every string a `max` length, and validate types strictly (for example
+   `integer` and `exists:` for foreign keys, `Rule::enum()` for enum
+   columns, `Password::defaults()` for passwords).
 
-4. **Controller.** Create `app/Http/Controllers/API/V1/WidgetController.php`
-   extending `BaseController`:
-   - wrap every result in `$this->sendResponse($data, 'Message')`;
-   - paginate lists with `Widget::latest()->paginate(10)`;
-   - look records up with `findOrFail()` so missing ids return `404`;
-   - call `$this->authorize('create', Widget::class)`,
-     `$this->authorize('update', $widget)` and
-     `$this->authorize('delete', $widget)` before changing anything;
+4. **Resource and controller.** Create `app/Http/Resources/WidgetResource.php`
+   listing every field the API returns, and
+   `app/Http/Controllers/Api/V1/WidgetController.php` extending
+   `App\Http\Controllers\Controller`:
+   - return `ApiResponse::success(new WidgetResource($widget), 'Message')`
+     (`App\Http\Responses\ApiResponse`) so every result has the
+     `{success, data, message}` envelope;
+   - paginate lists with
+     `Widget::latest()->paginate(10)->through(fn (Widget $widget) => new WidgetResource($widget))`;
+   - type-hint the model (`Widget $widget`) so route model binding answers
+     `404` for unknown ids. Only skip it when non-administrators must get
+     `403` for every id, as in `UserController`;
+   - create and update are authorized by the Form Request; call
+     `$this->authorize('delete', $widget)` before deleting;
    - only save validated input (`$request->validated()` or
-     `$request->safe()->only([...])`).
+     `$request->safe()->only([...])`);
+   - move writes that take more than one step (a transaction, related
+     records, files) into a class in `app/Actions/Widgets/`, as
+     `App\Actions\Products\CreateProduct` does.
 
 5. **Route.** Register the resource in `routes/api.php` **inside** the
    `auth:api` + `verified` group, for example by adding
@@ -187,14 +202,18 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    `App.vue`. `meta.admin` and `$gate.isAdmin()` only hide UI; the API must
    enforce every rule on its own.
 
-8. **Tests.** Add `tests/Feature/WidgetTest.php` with `RefreshDatabase` and
-   `actingAs($user, 'api')`. Cover at least:
+8. **Tests.** Add `tests/Feature/Api/Widgets/WidgetTest.php` with
+   `RefreshDatabase`. Sign in with `actingAsAdmin()` or `actingAsUser()` and
+   check successful responses with `assertApiSuccess($response, 'Message')`
+   (helpers in `tests/Concerns/`). Use a `#[DataProvider]` for lists of
+   invalid inputs. Add the widget's fields to `tests/Feature/Api/ResponseFieldsTest.php`.
+   Cover at least:
    - the happy path for create, read, update and delete;
    - `401` for guests;
    - `422` for invalid input, including wrong types (an array where a string
      is expected);
    - `403` when a regular user tries an administrator-only action;
-   - `404` for an unknown id.
+   - `404` for an unknown id (`assertGenericNotFound()`).
 
    `EmailVerificationTest` already checks that unverified accounts get `403`
    on every API route.
@@ -203,6 +222,17 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    and deletes a widget through the page, following
    `tests/e2e/catalogue.spec.js`. If the page is new, also add its path to
    the list in `tests/e2e/security.spec.js`.
+
+## AI coding assistants
+
+The repository has instructions for AI coding assistants such as OpenAI
+Codex, Claude Code and Cursor. [AGENTS.md](AGENTS.md) is the single source
+of truth; `CLAUDE.md`, `.claude/` and `.cursor/rules/` point to it.
+[docs/ai-assistants.md](docs/ai-assistants.md) lists which file each tool
+reads and how to keep them in sync. If your change alters a convention, a
+command or a rule, update `AGENTS.md` in the same pull request. Code written
+with an assistant goes through the same checks and review as any other
+contribution.
 
 ## Pull request checklist
 
@@ -215,15 +245,16 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
 - [ ] New or changed behaviour has tests, including authorization and
       validation failures.
 - [ ] Changes to pages are covered by the end-to-end tests, and the E2E
-      workflow passes.
+      tests pass (locally, or in CI with the `run-e2e` label).
 - [ ] New or changed `/api` routes are documented in
       `docs/api/openapi.yaml`, and Redocly CLI reports no errors.
 - [ ] No inline scripts, inline event handlers or third-party CDNs were
       added; pages still work under the Content-Security-Policy.
 - [ ] No secrets, personal data or real credentials in code, tests, fixtures,
       screenshots or commit messages.
-- [ ] Breaking changes have upgrade and rollback steps in the README.
-- [ ] Documentation (README, ARCHITECTURE, SECURITY) is updated if
+- [ ] Breaking changes have upgrade and rollback steps in
+      [docs/upgrading.md](docs/upgrading.md).
+- [ ] Documentation (README, ARCHITECTURE, SECURITY, `docs/`) is updated if
       behaviour, configuration or setup changed.
 
 ## License

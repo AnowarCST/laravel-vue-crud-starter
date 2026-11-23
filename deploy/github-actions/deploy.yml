@@ -1,0 +1,176 @@
+# Deployment template for GitHub Actions (disabled).
+#
+# Every line of this file is a comment, and it lives outside
+# .github/workflows/, so GitHub never runs it. It is a starting point, not
+# a tested deployment: it was checked with actionlint, but it has not been
+# run against a real registry or server.
+#
+# What it does, once enabled
+#   1. "image" job: on a version tag (v1.2.3) or a manual run, builds the
+#      production image (docker/Dockerfile, target "prod") and pushes it to
+#      GitHub Container Registry as ghcr.io/<owner>/<repo>, tagged with the
+#      version and the full commit SHA. It logs in with the workflow's own
+#      GITHUB_TOKEN, so no registry password is stored.
+#   2. "deploy" job (optional, skipped unless the repository variable
+#      DEPLOY_ENABLED is "true"): connects to one server over SSH and runs
+#      "docker compose pull" and "docker compose up -d" for the app
+#      service, using the exact image digest that job 1 pushed.
+#
+# How to enable
+#   1. Copy this file to .github/workflows/deploy.yml.
+#   2. Remove the "# " at the start of every line below the line of dashes
+#      (in most editors: select the lines and toggle comments), and delete
+#      this header if you like.
+#   3. Settings > Actions > General > Workflow permissions can stay
+#      "Read repository contents". The image job asks for packages: write
+#      itself.
+#   4. Push a tag (git tag v1.0.0 && git push origin v1.0.0) or start it
+#      from Actions > Deploy > Run workflow.
+#   5. Packages created by a workflow may start as private. Check the
+#      package's visibility under your profile or organization > Packages.
+#
+# To use the SSH deploy job
+#   Settings > Environments > New environment "production" (add required
+#   reviewers if you want an approval step), then add:
+#     variables  DEPLOY_HOST   server name or IP address
+#                DEPLOY_USER   SSH user that may run docker compose
+#                DEPLOY_PATH   directory on the server with compose.yaml
+#     secrets    DEPLOY_SSH_KEY      private key for that user (use a key
+#                                    made only for deployments)
+#                DEPLOY_KNOWN_HOSTS  output of "ssh-keyscan <host>", checked
+#                                    by hand against the server's key
+#   Then set the repository variable DEPLOY_ENABLED to "true" (Settings >
+#   Secrets and variables > Actions > Variables).
+#   On the server, the compose file's app service uses the image the job
+#   passes in, for example:
+#       services:
+#         app:
+#           image: ${APP_IMAGE:-ghcr.io/<owner>/<repo>:<version>}
+#           env_file: .env.production
+#           ports: ["127.0.0.1:8080:8080"]
+#           volumes: ["storage:/var/www/html/storage"]
+#   If the package is private, run "docker login ghcr.io" on the server once,
+#   with a token that has only the read:packages scope.
+#   Migrations are never run automatically. Take a database backup, then
+#   run "docker compose exec app php artisan migrate --force" (SECURITY.md,
+#   production checklist).
+#
+# Deploying somewhere else
+#   Replace the "deploy" job with your platform's step. For a cloud
+#   provider (AWS, Azure, Google Cloud), prefer OpenID Connect over
+#   long-lived keys: give that job "permissions: id-token: write" and use the
+#   provider's official login action (for example
+#   aws-actions/configure-aws-credentials with role-to-assume, or
+#   azure/login with client-id, tenant-id and subscription-id). Pin every
+#   action to a full commit SHA, as the other workflows do. For AWS CodeBuild
+#   and Azure Pipelines, see deploy/aws/ and deploy/azure/.
+#
+# Security notes
+#   - Pull requests never trigger this workflow; only tags and manual runs.
+#   - Secrets reach only the deploy job, through env: and never through
+#     ${{ }} inside run:.
+#   - The deploy job checks the server's host key (StrictHostKeyChecking=yes)
+#     and deletes the private key when the step ends.
+# ------------------------------------------------------------------------
+# name: Deploy
+#
+# on:
+#   push:
+#     tags: ["v*"]
+#   workflow_dispatch:
+#
+# permissions:
+#   contents: read
+#
+# # Never cancel a deployment half way; queue the next one instead.
+# concurrency:
+#   group: deploy
+#   cancel-in-progress: false
+#
+# jobs:
+#   image:
+#     name: Build and push the prod image
+#     runs-on: ubuntu-24.04
+#     timeout-minutes: 30
+#     permissions:
+#       contents: read
+#       packages: write # push to ghcr.io with GITHUB_TOKEN
+#     outputs:
+#       image: ${{ steps.name.outputs.image }}
+#       digest: ${{ steps.build.outputs.digest }}
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+#         with:
+#           persist-credentials: false
+#
+#       # Registry image names must be lowercase.
+#       - name: Image name
+#         id: name
+#         run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+#
+#       - name: Image tags
+#         id: meta
+#         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+#         with:
+#           images: ${{ steps.name.outputs.image }}
+#           tags: |
+#             type=semver,pattern={{version}}
+#             type=semver,pattern={{major}}.{{minor}}
+#             type=sha,format=long
+#
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+#
+#       - name: Log in to GitHub Container Registry
+#         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#
+#       - name: Build and push
+#         id: build
+#         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+#         with:
+#           context: .
+#           file: docker/Dockerfile
+#           target: prod
+#           push: true
+#           tags: ${{ steps.meta.outputs.tags }}
+#           labels: ${{ steps.meta.outputs.labels }}
+#           cache-from: type=gha
+#           cache-to: type=gha,mode=max
+#
+#   # Optional. Skipped unless the repository variable DEPLOY_ENABLED is "true".
+#   # Replace this job with your platform's deploy step if you do not use a
+#   # server with Docker Compose (see the notes at the top of this file).
+#   deploy:
+#     name: Deploy over SSH
+#     needs: image
+#     if: vars.DEPLOY_ENABLED == 'true'
+#     runs-on: ubuntu-24.04
+#     timeout-minutes: 15
+#     # Settings > Environments > production: add required reviewers and keep
+#     # the deploy secrets there, so only approved runs can read them.
+#     environment: production
+#     steps:
+#       - name: Pull the new image and restart the app
+#         env:
+#           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+#           SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+#           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+#           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+#           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+#           APP_IMAGE: ${{ needs.image.outputs.image }}@${{ needs.image.outputs.digest }}
+#         run: |
+#           install -m 700 -d ~/.ssh
+#           trap 'rm -f ~/.ssh/deploy_key' EXIT
+#           (umask 077 && printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key)
+#           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#           # The server's compose file uses "image: ${APP_IMAGE}" for the app
+#           # service. Migrations are not run here: take a backup, then run
+#           # "php artisan migrate --force" by hand (see SECURITY.md).
+#           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+#             "$DEPLOY_USER@$DEPLOY_HOST" \
+#             "cd ${DEPLOY_PATH@Q} && export APP_IMAGE=${APP_IMAGE@Q} && docker compose pull app && docker compose up -d app"

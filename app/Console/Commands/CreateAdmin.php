@@ -2,10 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
-use App\Rules\PasswordByteLength;
+use App\Actions\Users\CreateUser;
+use App\Enums\UserType;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 class CreateAdmin extends Command
 {
@@ -13,7 +14,7 @@ class CreateAdmin extends Command
 
     protected $description = 'Create an administrator with an interactively entered password';
 
-    public function handle(): int
+    public function handle(CreateUser $createUser): int
     {
         if (! $this->input->isInteractive()) {
             $this->error('Administrator provisioning requires an interactive terminal. Passwords are never accepted as command arguments.');
@@ -30,7 +31,7 @@ class CreateAdmin extends Command
         $validator = Validator::make($data, [
             'email' => ['required', 'string', 'email', 'max:191', 'unique:users,email'],
             'name' => ['required', 'string', 'max:191'],
-            'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed', new PasswordByteLength],
+            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
         ]);
         if ($validator->fails()) {
             foreach ($validator->errors()->all() as $error) {
@@ -40,13 +41,15 @@ class CreateAdmin extends Command
             return self::FAILURE;
         }
 
-        $admin = new User([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'], // hashed by the model cast
-        ]);
+        $validated = $validator->safe();
         // Provisioned by an operator, so no email verification step is needed.
-        $admin->forceFill(['type' => User::TYPE_ADMIN, 'email_verified_at' => now()])->save();
+        $createUser->handle(
+            name: $validated->string('name')->value(),
+            email: $validated->string('email')->value(),
+            password: $validated->string('password')->value(),
+            type: UserType::Admin,
+            markEmailAsVerified: true,
+        );
         $this->info('Administrator created.');
 
         return self::SUCCESS;

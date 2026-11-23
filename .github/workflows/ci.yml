@@ -1,5 +1,10 @@
 name: CI
 
+# Always on: the fast checks every change needs (PHP and frontend). Mark both
+# jobs as required checks in branch protection. The slower checks are
+# opt-in and live in their own workflows: docker.yml (production image
+# build), e2e.yml (Playwright) and zap.yml (OWASP ZAP). See docs/ci-cd.md.
+
 on:
   push:
     branches: [main]
@@ -66,7 +71,7 @@ jobs:
       - name: Check code style (Pint)
         run: composer lint
 
-      - name: Static analysis (Larastan, level 9)
+      - name: Static analysis (Larastan, level 10)
         run: composer analyse
 
       - name: Run tests
@@ -103,43 +108,3 @@ jobs:
       - name: Build assets
         run: npm run build
 
-  docker:
-    name: Docker (prod image)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Build prod target
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: docker/Dockerfile
-          target: prod
-          push: false
-          load: true
-          tags: laravel-vue-crud-starter:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Smoke test /up
-        run: |
-          docker run -d --name app -p 127.0.0.1:8080:8080 \
-            -e APP_KEY="base64:$(openssl rand -base64 32)" \
-            -e DB_CONNECTION=sqlite -e DB_DATABASE=/tmp/ci.sqlite \
-            -e SESSION_DRIVER=file -e CACHE_STORE=file \
-            laravel-vue-crud-starter:ci
-          for _ in $(seq 1 30); do
-            if curl --fail --silent --output /dev/null http://127.0.0.1:8080/up; then
-              echo "healthy"; exit 0
-            fi
-            sleep 2
-          done
-          docker logs app
-          exit 1

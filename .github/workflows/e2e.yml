@@ -3,18 +3,32 @@ name: E2E
 # Playwright end-to-end tests against the production Docker image, MySQL and
 # Mailpit, started with the same scripts developers use locally
 # (tests/e2e/setup/*.sh, see README.md "End-to-end tests").
+#
+# Opt-in, because it builds the production image and starts a full stack
+# for every run. It runs:
+#   - on demand: Actions tab > E2E > Run workflow (any branch);
+#   - on a pull request that has the "run-e2e" label (adding the label starts
+#     it; later pushes to the pull request run it again);
+#   - on every pull request and push to main when the repository variable
+#     RUN_E2E is "true" (Settings > Secrets and variables > Actions >
+#     Variables).
+# Otherwise the job is skipped, which GitHub reports as a success. See
+# docs/ci-cd.md.
 
 on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Runs started by adding some other label do nothing, so they get their own
+# group and never cancel a real run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name || 'code' }}
   cancel-in-progress: true
 
 env:
@@ -25,6 +39,14 @@ env:
 jobs:
   e2e:
     name: Playwright (Chromium)
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'push' && vars.RUN_E2E == 'true')
+      || (github.event_name == 'pull_request' && (
+        (github.event.action == 'labeled' && github.event.label.name == 'run-e2e')
+        || (github.event.action != 'labeled' && (vars.RUN_E2E == 'true'
+          || contains(github.event.pull_request.labels.*.name, 'run-e2e')))
+      ))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

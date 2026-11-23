@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Users\CreateUser;
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Rules\PasswordByteLength;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 class RegisterController extends Controller
 {
@@ -39,7 +42,7 @@ class RegisterController extends Controller
         return Validator::make($data, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed', new PasswordByteLength],
+            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
         ]);
     }
 
@@ -48,13 +51,13 @@ class RegisterController extends Controller
      */
     protected function create(array $data): User
     {
-        $user = new User([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'], // hashed by the model cast
-        ]);
-        $user->forceFill(['type' => User::TYPE_USER])->save();
-
-        return $user;
+        // RegistersUsers then sends the verification email.
+        return app(CreateUser::class)->handle(
+            name: Arr::string($data, 'name'),
+            email: Arr::string($data, 'email'),
+            password: Arr::string($data, 'password'),
+            type: UserType::User,
+            markEmailAsVerified: false,
+        );
     }
 }

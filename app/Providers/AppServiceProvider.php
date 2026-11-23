@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Auth\PasswordBoundApiTokenCookieFactory;
 use App\Models\User;
+use App\Rules\PasswordByteLength;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
@@ -10,6 +12,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
+use Laravel\Passport\ApiTokenCookieFactory;
 use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,10 +35,28 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureProxies();
         $this->configureRateLimiting();
+        $this->configureAuthorization();
+        $this->configurePasswords();
+    }
 
+    /**
+     * Policies are linked to their models with #[UsePolicy] on the model.
+     */
+    protected function configureAuthorization(): void
+    {
         // Outside the local environment, /docs is limited to administrators
         // (see App\Http\Middleware\AuthorizeApiDocs).
         Gate::define('viewApiDocs', fn (User $user): bool => $user->isAdmin());
+    }
+
+    /**
+     * The rule behind Password::defaults(), used wherever a password is set:
+     * 12 to 72 characters and at most 72 bytes, the bcrypt input limit
+     * (Laravel's max rule counts characters, not bytes).
+     */
+    protected function configurePasswords(): void
+    {
+        Password::defaults(fn (): Password => Password::min(12)->max(72)->rules([new PasswordByteLength]));
     }
 
     protected function configureProxies(): void
@@ -62,6 +84,11 @@ class AppServiceProvider extends ServiceProvider
         // Databases created with Passport <= 12 migrations use integer client
         // ids; set PASSPORT_CLIENT_UUIDS=false for those until migrated.
         Passport::$clientUuids = (bool) config('passport.client_uuids', true);
+
+        // The SPA's laravel_token cookie carries a claim derived from the
+        // password hash, so a password change invalidates the cookies issued
+        // before it (see App\Http\Middleware\RejectStaleApiTokenCookie).
+        $this->app->bind(ApiTokenCookieFactory::class, PasswordBoundApiTokenCookieFactory::class);
 
         Passport::tokensExpireIn(now()->addDays(15));
         Passport::refreshTokensExpireIn(now()->addDays(30));

@@ -1,0 +1,23 @@
+---
+description: Laravel backend conventions (controllers, Form Requests, policies, actions, resources, tests)
+globs: app/**, routes/**, config/**, bootstrap/app.php, database/**, tests/Feature/**, tests/Unit/**, tests/Concerns/**
+alwaysApply: false
+---
+
+Follow "Backend conventions", "API contract" and "Tests" in @AGENTS.md.
+The reference implementation is @app/Http/Controllers/Api/V1/ProductController.php
+with @app/Http/Requests/Products/ProductRequest.php and
+@app/Policies/ProductPolicy.php.
+
+Checklist for a backend change:
+
+- Validation and authorization in a Form Request; policy linked with
+  `#[UsePolicy]`; multi-step writes in `app/Actions/`; responses through
+  `ApiResponse::success()` and a JsonResource.
+- `UserController` checks authorization before it looks up an account; keep
+  that order.
+- Any `/api` change also updates @docs/api/openapi.yaml and, for response
+  fields, `tests/Feature/Api/ResponseFieldsTest.php`.
+- Migrations and seeders: see @database/AGENTS.md.
+- Run `docker compose exec -T app composer lint`, `composer analyse` and
+  `php artisan test` in the `app` container. No PHPStan baseline or ignores.

@@ -1,0 +1,106 @@
+# Amazon ECS (Fargate) task definition template (disabled).
+#
+# A minimal example for running the production image built by
+# deploy/aws/buildspec.yml. Every line is a comment. It was checked with
+# the AWS CLI's local parameter validation only; it has not been
+# registered or run on AWS.
+#
+# How to use it
+#   1. Remove the "# " at the start of every line below the line of dashes,
+#      and replace every placeholder: the account ID 123456789012, the
+#      region eu-west-1, the role, the secret ARNs, APP_URL and DB_HOST.
+#   2. Create what it refers to:
+#        - an execution role with the AWS managed policy
+#          AmazonECSTaskExecutionRolePolicy, plus secretsmanager:GetSecretValue
+#          on the secrets below;
+#        - the secrets (APP_KEY from "php artisan key:generate --show", and
+#          the Passport keys from "php artisan passport:keys" as the full
+#          PEM text);
+#        - the log group: aws logs create-log-group
+#            --log-group-name /ecs/laravel-vue-crud-starter
+#        - a MySQL database the task can reach (for example Amazon RDS), and
+#          an ECS cluster and service behind a load balancer that terminates
+#          HTTPS and forwards to port 8080.
+#   3. Register it:
+#        aws ecs register-task-definition \
+#          --cli-input-yaml file://deploy/aws/ecs-task-definition.yml
+#   4. Deploy new images with CodePipeline: source (this repository),
+#      build (the CodeBuild project from deploy/aws/buildspec.yml), and an
+#      "Amazon ECS" deploy action pointed at your cluster and service. That
+#      action reads imagedefinitions.json and starts a new revision with the
+#      new image. The container name must stay "app".
+#
+# Notes
+#   - Fargate storage is temporary. Product photos are stored under
+#     storage/app/public, so mount an Amazon EFS volume there, or they are
+#     lost when a task is replaced.
+#   - Add the other settings from .env.example that you need (MAIL_*,
+#     TRUSTED_PROXIES, LOG_LEVEL ...) and follow the production checklist in
+#     SECURITY.md.
+#   - Run migrations as a one-off task with the same task definition and
+#     the command override ["php", "artisan", "migrate", "--force"], after
+#     taking a database backup.
+# ------------------------------------------------------------------------
+# family: laravel-vue-crud-starter
+# networkMode: awsvpc
+# requiresCompatibilities:
+#   - FARGATE
+# cpu: "512"
+# memory: "1024"
+# runtimePlatform:
+#   operatingSystemFamily: LINUX
+#   cpuArchitecture: X86_64
+# # Lets ECS pull from ECR, read the secrets below and write logs.
+# executionRoleArn: arn:aws:iam::123456789012:role/laravel-vue-crud-starter-execution
+# containerDefinitions:
+#   - name: app
+#     # Replaced on every deployment by the CodePipeline ECS action, which
+#     # reads imagedefinitions.json from the buildspec.
+#     image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/laravel-vue-crud-starter:replace-me
+#     essential: true
+#     portMappings:
+#       - containerPort: 8080
+#         protocol: tcp
+#     environment:
+#       - name: APP_URL
+#         value: https://app.example.com
+#       - name: DB_CONNECTION
+#         value: mysql
+#       - name: DB_HOST
+#         value: your-database.example.internal
+#       - name: DB_DATABASE
+#         value: laravel
+#       - name: SESSION_SECURE_COOKIE
+#         value: "true"
+#     # Values come from AWS Secrets Manager (or SSM Parameter Store) at start.
+#     secrets:
+#       - name: APP_KEY
+#         valueFrom: arn:aws:secretsmanager:eu-west-1:123456789012:secret:lvcs/app-key
+#       - name: DB_USERNAME
+#         valueFrom: arn:aws:secretsmanager:eu-west-1:123456789012:secret:lvcs/db-username
+#       - name: DB_PASSWORD
+#         valueFrom: arn:aws:secretsmanager:eu-west-1:123456789012:secret:lvcs/db-password
+#       - name: PASSPORT_PRIVATE_KEY
+#         valueFrom: arn:aws:secretsmanager:eu-west-1:123456789012:secret:lvcs/passport-private-key
+#       - name: PASSPORT_PUBLIC_KEY
+#         valueFrom: arn:aws:secretsmanager:eu-west-1:123456789012:secret:lvcs/passport-public-key
+#     # ECS does not use the image's HEALTHCHECK, so repeat it here.
+#     healthCheck:
+#       command:
+#         - CMD
+#         - curl
+#         - --fail
+#         - --silent
+#         - --output
+#         - /dev/null
+#         - http://127.0.0.1:8080/up
+#       interval: 30
+#       timeout: 5
+#       retries: 3
+#       startPeriod: 30
+#     logConfiguration:
+#       logDriver: awslogs
+#       options:
+#         awslogs-group: /ecs/laravel-vue-crud-starter
+#         awslogs-region: eu-west-1
+#         awslogs-stream-prefix: app

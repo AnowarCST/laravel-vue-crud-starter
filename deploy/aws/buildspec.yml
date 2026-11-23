@@ -1,0 +1,149 @@
+# AWS CodeBuild template (disabled).
+#
+# Every line of this file is a comment, and CodeBuild only reads a
+# buildspec you point a project at, so nothing runs until you enable it.
+# This is a starting point, not a tested pipeline: the uncommented YAML was
+# parsed and checked against the buildspec version 0.2 layout, and the
+# check commands are the same as in the GitHub Actions CI, but this file has
+# not been run on AWS.
+#
+# What it does, once enabled
+#   - Runs the same checks as .github/workflows/ci.yml, inside the project's
+#     own images from docker/Dockerfile (CodeBuild's managed images may not
+#     offer PHP 8.5 and Node 26):
+#       PHP:      composer validate --strict, composer install,
+#                 composer audit, composer lint (Pint),
+#                 composer analyse (Larastan), php artisan test
+#       Frontend: npm ci, npm run lint, npm run format:check,
+#                 npm audit --audit-level=moderate, npm run build
+#   - Builds the production image (target "prod") and pushes it to Amazon
+#     ECR, tagged <first 12 characters of the commit SHA>-<build number>.
+#   - Writes imagedefinitions.json, which the CodePipeline "Amazon ECS"
+#     deploy action uses to roll the new image out (see
+#     deploy/aws/ecs-task-definition.yml).
+#
+# How to enable
+#   1. Copy this file to the repository root as buildspec.yml, or keep it
+#      here and set the project's buildspec name to deploy/aws/buildspec.yml.
+#   2. Remove the "# " at the start of every line below the line of dashes.
+#   3. Create the ECR repository once:
+#        aws ecr create-repository --repository-name laravel-vue-crud-starter \
+#          --image-tag-mutability IMMUTABLE \
+#          --image-scanning-configuration scanOnPush=true
+#      If you choose another name, change ECR_REPOSITORY below.
+#   4. Create a CodeBuild project:
+#        - Source: this repository on GitHub (for example through an AWS
+#          CodeConnections connection). Webhook event: pushes to main.
+#          Do not turn on pull request builds for this project, and never
+#          for forks: they would run the pull request's code with the
+#          project's role, which can push images. GitHub Actions already
+#          checks pull requests.
+#        - Environment: a current Amazon Linux or Ubuntu standard image
+#          (x86_64), and turn on "Privileged" mode. Docker builds need it.
+#          A medium or larger compute type is a sensible start.
+#        - Artifacts: none for a stand-alone project; CodePipeline sets
+#          them when the project is a pipeline stage.
+#   5. Give the CodeBuild service role, in addition to the CloudWatch Logs
+#      permissions CodeBuild adds itself:
+#        - ecr:GetAuthorizationToken on "*";
+#        - ecr:BatchCheckLayerAvailability, ecr:InitiateLayerUpload,
+#          ecr:UploadLayerPart, ecr:CompleteLayerUpload, ecr:PutImage and
+#          ecr:BatchGetImage on the repository's ARN only.
+#      sts:GetCallerIdentity, used to find the account ID, needs no
+#      permission. No access keys are needed: CodeBuild uses the role.
+#
+# Environment variables
+#   CodeBuild sets AWS_DEFAULT_REGION, CODEBUILD_SRC_DIR,
+#   CODEBUILD_RESOLVED_SOURCE_VERSION and CODEBUILD_BUILD_NUMBER itself.
+#   ECR_REPOSITORY (below) can be overridden in the project settings.
+#   The checks need no secrets. The image never contains .env or keys;
+#   give the running container its configuration as environment variables
+#   and secrets (see deploy/aws/ecs-task-definition.yml).
+#
+# Notes
+#   - Builds pull the PHP, Composer and Node base images from Docker Hub,
+#     which limits anonymous pulls. If builds fail with "toomanyrequests",
+#     log in to Docker Hub in pre_build (token in AWS Secrets Manager) or
+#     use an ECR pull through cache.
+#   - Migrations are never run automatically. Take a database backup, then
+#     run "php artisan migrate --force" as a one-off ECS task.
+# ------------------------------------------------------------------------
+# version: 0.2
+#
+# env:
+#   shell: bash
+#   variables:
+#     ECR_REPOSITORY: laravel-vue-crud-starter
+#     DOCKER_BUILDKIT: "1"
+#
+# phases:
+#   pre_build:
+#     on-failure: ABORT
+#     commands:
+#       - AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+#       - ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+#       # Commit SHA plus build number, so a rebuild of the same commit gets
+#       # a new tag (the ECR repository uses immutable tags).
+#       - SOURCE_SHA="${CODEBUILD_RESOLVED_SOURCE_VERSION:-unknown}"
+#       - IMAGE_TAG="${SOURCE_SHA:0:12}-${CODEBUILD_BUILD_NUMBER}"
+#       - IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+#       - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+#
+#   build:
+#     on-failure: ABORT
+#     commands:
+#       # Backend checks, the same as the "php" job in .github/workflows/ci.yml,
+#       # in the PHP 8.5 image used for local development.
+#       - docker build --target dev --file docker/Dockerfile --tag ci-php:dev .
+#       - |
+#         docker run --rm --user root \
+#           --env COMPOSER_ALLOW_SUPERUSER=1 \
+#           --volume "$CODEBUILD_SRC_DIR":/var/www/html \
+#           --workdir /var/www/html \
+#           --entrypoint sh \
+#           ci-php:dev -euc '
+#             composer validate --strict
+#             composer install --no-interaction --no-progress --prefer-dist
+#             composer audit --locked
+#             cp .env.example .env
+#             php artisan key:generate --no-interaction
+#             php artisan passport:keys --no-interaction
+#             composer lint
+#             composer analyse
+#             php artisan test
+#           '
+#       # Frontend checks, the same as the "frontend" job, in the Node 26 image.
+#       - docker build --target node-dev --file docker/Dockerfile --tag ci-node:dev .
+#       - |
+#         docker run --rm --user root \
+#           --volume "$CODEBUILD_SRC_DIR":/app \
+#           --workdir /app \
+#           --entrypoint sh \
+#           ci-node:dev -euc '
+#             npm ci --no-fund
+#             npm run lint
+#             npm run format:check
+#             npm audit --audit-level=moderate
+#             npm run build
+#           '
+#       # Production image. vendor/, node_modules/, .env and the keys created
+#       # above are excluded by .dockerignore, so they never reach the image.
+#       - docker build --target prod --file docker/Dockerfile --tag "$IMAGE_URI" .
+#
+#   post_build:
+#     commands:
+#       # Push only after a successful build, even if on-failure above is
+#       # changed to CONTINUE.
+#       - |
+#         if [ "${CODEBUILD_BUILD_SUCCEEDING:-0}" != "1" ]; then
+#           echo "Build failed, not pushing the image."
+#           exit 1
+#         fi
+#       - docker push "$IMAGE_URI"
+#       # For the CodePipeline "Amazon ECS" deploy action: "app" must match the
+#       # container name in deploy/aws/ecs-task-definition.yml.
+#       - printf '[{"name":"app","imageUri":"%s"}]\n' "$IMAGE_URI" > imagedefinitions.json
+#
+# artifacts:
+#   files:
+#     - imagedefinitions.json

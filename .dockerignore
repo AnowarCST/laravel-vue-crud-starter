@@ -31,5 +31,35 @@ coverage
 
 docker-compose*.yml
 azure-pipelines.yml
+deploy
 CODEX_INSTRUCTIONS.md
 SECURITY_REFACTOR_PLAN.md
+
+# Instructions for AI coding assistants and editor rules: repository only.
+AGENTS.md
+CLAUDE.md
+**/AGENTS.md
+**/CLAUDE.md
+.claude
+.cursor
+
+# Documentation. The /docs page reads docs/api/openapi.yaml at runtime, so
+# docs/api stays. LICENSE and THIRD_PARTY_NOTICES.md stay with the software.
+docs/*
+!docs/api
+**/*.md
+!THIRD_PARTY_NOTICES.md
+
+# Tests and the configuration of tools that only run in development and CI.
+tests
+phpunit.xml
+phpstan.neon
+pint.json
+eslint.config.js
+playwright.config.js
+.prettierrc.json
+.prettierignore
+.editorconfig
+.gitattributes
+.gitignore
+.zap

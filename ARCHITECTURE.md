@@ -29,7 +29,9 @@ flowchart LR
     V -->|"/api/* + laravel_token cookie + X-CSRF-TOKEN"| A["/api routes<br/>auth:api, verified, throttle:api"]
     C[API client] -->|"/api/* + Bearer token"| A
     A --> K["API V1 controllers<br/>Form Requests + policies"]
+    K --> X["Actions<br/>(multi-step writes)"]
     K --> D[(MySQL)]
+    X --> D
 ```
 
 ### Signing in (web session)
@@ -77,7 +79,10 @@ flowchart LR
   same list. It sends them to `GET /api/product`.
 - `ProductIndexRequest` validates those query parameters. Unknown values are
   rejected with `422`, so only allowed sort columns and bound values reach
-  the database query. `ProductController::index()` applies them.
+  the database query. `ProductController::index()` applies them with the
+  query scopes on `Product` (`search`, `taggedWith`, `stockLevel`,
+  `lowStock`, `outOfStock`). `search` escapes `%` and `_`, so they match
+  literally.
 - A product is "low stock" with 1 to `Product::LOW_STOCK_THRESHOLD` (5) units
   and "out of stock" with 0. `GET /api/product/stats` returns the counts the
   dashboard shows (by status, low stock and out of stock).
@@ -101,6 +106,14 @@ flowchart LR
 - The `api` guard (driver `passport`) accepts either a bearer token or the
   `laravel_token` cookie. The cookie is only accepted together with a
   matching CSRF token; otherwise the request is unauthenticated.
+- The cookie is a signed JWT that cannot be revoked, so
+  `App\Auth\PasswordBoundApiTokenCookieFactory` (bound in place of
+  Passport's `ApiTokenCookieFactory`) adds a `pwd` claim: an HMAC of the
+  password hash, keyed with the key Passport signs the cookie with.
+  `RejectStaleApiTokenCookie`, prepended to the `api` group and run before
+  authentication, drops a cookie whose claim does not match the current
+  password, so the request is unauthenticated (`401`) after a password
+  change.
 - The axios response interceptor sends the browser to `/login` on `401` or
   `419`, and to `/email/verify` on a `403` whose message is
   `Your email address is not verified.`.
@@ -123,9 +136,13 @@ flowchart LR
 - `routes/api.php` (prefix `/api`, middleware group `api`). Every route except
   `GET /api/version` uses `auth:api` and `verified`.
   `EmailVerificationTest` checks this for every API route.
-- Successful responses use `BaseController::sendResponse()`, which returns
-  `{"success": true, "data": ..., "message": "..."}`. List endpoints put a
-  Laravel paginator (10 per page) in `data`. `GET /api/product` also accepts
+- Successful responses are `App\Http\Responses\ApiResponse` objects, which
+  return `{"success": true, "data": ..., "message": "..."}` with status 200.
+  Records are serialized by the API Resources in `app/Http/Resources/`
+  (`UserResource`, `CategoryResource`, `TagResource`, `ProductResource`,
+  `ProductTagResource`), which list every field explicitly. List endpoints
+  put a Laravel paginator (10 per page) in `data`, with its items mapped to
+  resources (`->through(...)`), so the paginator fields stay the same. `GET /api/product` also accepts
   `per_page` (up to 50) and the search, filter and sort parameters described
   in [Product catalogue](#product-catalogue).
 - `bootstrap/app.php` renders exceptions as JSON for `api/*` and for requests
@@ -152,15 +169,19 @@ flowchart LR
 
 | Path | Contents |
 | --- | --- |
+| `app/Actions/` | Single-purpose classes for writes that take more than one step: `Products/CreateProduct`, `Products/UpdateProduct`, `Products/SyncProductTags`, `Products/StoreProductImage`, `Users/CreateUser`, `Profile/UpdateProfile`, `Profile/ChangePassword`. |
 | `app/Console/Commands/CreateAdmin.php` | `php artisan app:create-admin`, the only way to create the first administrator (interactive). |
-| `app/Http/Controllers/API/V1/` | API controllers. `BaseController` provides the response envelope. |
+| `app/Http/Controllers/Api/V1/` | API controllers. |
+| `app/Http/Resources/` | API Resources: the fields of each record in API responses. |
+| `app/Http/Responses/ApiResponse.php` | The `{success, data, message}` envelope of successful API responses. |
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
-| `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
-| `app/Http/Requests/` | Form Requests: `Products/ProductRequest`, `Products/ProductIndexRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
+| `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers), `AuthorizeApiDocs` and `KeepSessionAfterPasswordChange` (keeps the browser that changed its password signed in) and `RejectStaleApiTokenCookie` (rejects API cookies issued before a password change). |
+| `app/Http/Requests/` | Form Requests: `Categories/CategoryRequest`, `Tags/TagRequest`, `Products/ProductRequest`, `Products/ProductIndexRequest`, `Products/ProductImageRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
+| `app/Enums/` | `UserType` (`admin`, `user`), `ProductStatus` (`active`, `draft`, `archived`) and `StockLevel` (the `in`, `low` and `out` values of the product list's `stock` filter). |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
-| `app/Policies/` | One policy per model, found by Laravel's naming convention. |
-| `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate. |
+| `app/Policies/` | One policy per model, linked to it with `#[UsePolicy]` on the model. |
+| `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate, the password rule (`Password::defaults()`). |
 | `app/Rules/PasswordByteLength.php` | Rejects passwords longer than 72 bytes (the bcrypt limit). |
 | `app/Support/ImageReencoder.php` | Decodes and re-encodes uploaded images with GD. |
 | `bootstrap/app.php` | Routing, middleware and exception handling setup. |
@@ -173,17 +194,20 @@ flowchart LR
 | `resources/js/` | Vite entries (`app.js`, `auth.js`, `api-docs.js`), the root component `App.vue`, `routes.js`, `Gate.js`, `components/` and `lib/` helpers. |
 | `resources/views/` | Blade views: SPA shell (`home.blade.php`), guest layout (`layouts/master.blade.php`), auth pages, `api-docs.blade.php`, Passport consent page. |
 | `routes/web.php`, `routes/api.php` | Web and API routes. |
-| `tests/Feature/`, `tests/Unit/` | PHPUnit tests. They use an in-memory SQLite database. |
+| `tests/Feature/`, `tests/Unit/` | PHPUnit tests, using an in-memory SQLite database. `tests/Feature/` is grouped by area: `Api/` (one folder per resource, plus `ResponseFieldsTest`, which pins the fields of every response), `Auth/`, `Security/`, `Docs/`, `Database/` (migrations and seeders) and `Web/`. Shared helpers are in `tests/Concerns/` (`actingAsAdmin()`, `actingAsUser()`, `actingAsUnverifiedUser()`, `assertApiSuccess()` and other envelope assertions), used by `tests/TestCase.php`. |
 | `tests/e2e/` | Playwright end-to-end tests, and the scripts and Compose file for the throwaway stack they run against (`setup/`, `compose.yaml`). |
 | `.zap/rules.tsv` | Rules for the OWASP ZAP baseline scan. |
 | `.github/` | CI, end-to-end tests, ZAP scan, CodeQL and Dependabot configuration. |
+| `deploy/` | Disabled, fully commented CI/CD templates for GitHub Actions, AWS and Azure (see `docs/ci-cd.md`). |
 
 ## Authorization model
 
-- **Account types.** `users.type` is `admin` or `user` (`User::TYPE_ADMIN`,
-  `User::TYPE_USER`; `User::isAdmin()`). `type` is not mass assignable. It is
-  only set by `RegisterController` (always `user`), by
-  `UserController` (administrators), and by `app:create-admin`.
+- **Account types.** `users.type` is `admin` or `user`, cast to the
+  `App\Enums\UserType` enum (`UserType::Admin`, `UserType::User`;
+  `User::isAdmin()`). `type` is not mass assignable. It is
+  only set through `App\Actions\Users\CreateUser`, by
+  `RegisterController` (always `user`), `UserController` (administrators)
+  and `app:create-admin`, and on update by `UserController`.
 - **Policies** (`app/Policies/`):
 
   | Policy | View, create, update | Delete |
@@ -191,12 +215,17 @@ flowchart LR
   | `ProductPolicy`, `CategoryPolicy`, `TagPolicy` | Any account | Administrators |
   | `UserPolicy` | Administrators | Administrators, but not their own account |
 
-  Controllers call `$this->authorize()` for create, update and delete.
-  `UserController` checks `viewAny` before it looks up an account, and
-  `UserRequest::authorize()` does the same for create and update, so a
-  non-administrator gets `403` and cannot probe which ids exist. Category,
-  product and tag `index`/`show` actions do not call the policy; every
-  verified account may read them.
+  Create and update are authorized in the Form Requests
+  (`CategoryRequest`, `TagRequest`, `ProductRequest`, `ProductImageRequest`,
+  `UserRequest`), delete in the controllers with `$this->authorize()`.
+  Category, product and tag routes use route model binding, so an unknown id
+  returns `404`. `bootstrap/app.php` runs the `verified` middleware before
+  route model binding, so an unverified account gets `403` either way.
+  `UserController` does not use route model binding: it checks `viewAny`
+  before it looks up an account, and `UserRequest::authorize()` does the same
+  for create and update, so a non-administrator gets `403` and cannot probe
+  which ids exist. Category, product and tag `index`/`show` actions do not
+  call the policy; every verified account may read them.
 - **Other rules.** `UserRequest` stops administrators from changing their
   own `type`. `ProfileUpdateRequest` only accepts `name` and `email`.
 - **Gates.** `viewApiDocs` (administrators) protects `/docs` outside the
@@ -228,14 +257,23 @@ Details and operational advice are in [SECURITY.md](SECURITY.md).
 - **CSRF.** Web forms use Laravel's CSRF protection. API requests that
   authenticate with the `laravel_token` cookie must send the CSRF token.
 - **Passwords and tokens.** Passwords are 12 to 72 characters and at most 72
-  bytes. Changing a password (profile, administrator, or reset) rotates the
+  bytes (`Password::defaults()`, set in `AppServiceProvider`). Changing a password (profile, administrator, or reset) rotates the
   remember token and revokes every OAuth access and refresh token of the
   account (`User::booted()`). Because of `authenticateSessions()` in
   `bootstrap/app.php`, browser sessions that signed in with the old password
-  are signed out when they next load a page. Deleting an account also
-  revokes its tokens. The
-  forgot-password form answers the same way whether or not the email
-  exists.
+  are signed out when they next load a page. The session that changed its
+  own password on the Profile page stays signed in under a new session id:
+  `KeepSessionAfterPasswordChange` stores the new password hash in it and
+  sends a fresh `laravel_token` cookie. It only does this when the browser
+  sent its session cookie, so it never creates empty sessions. That
+  browser's "Remember me" cookie stops working (the remember token was
+  rotated), so it stays signed in until its session expires. API cookies
+  issued before the change are rejected (`RejectStaleApiTokenCookie`), also
+  when the request carries a bearer token, and
+  `tests/Feature/Security/ApiGuardMiddlewareTest.php` fails if a route uses
+  the `api` guard without that middleware.
+  Deleting an account also revokes its tokens. The forgot-password form
+  answers the same way whether or not the email exists.
 - **Uploads.** `POST /api/product/upload` accepts JPEG, PNG and WebP images
   up to 5 MB and 4096x4096 pixels. `ImageReencoder` decodes the image and
   stores a re-encoded copy, which drops metadata and hidden data. Files get
@@ -256,18 +294,18 @@ From `database/migrations/` and `app/Models/`:
 | `users` | `id`, `name`, `type`, `email` (unique), `email_verified_at`, `password`, `remember_token`, timestamps | Model `User`. |
 | `categories` | `id`, `name`, `description`, timestamps | Model `Category`. |
 | `tags` | `id`, `name`, timestamps | Model `Tag`. |
-| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. Appends `photo_url`. `sku` is empty only for products created before SKUs existed. |
+| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed; cast to `App\Enums\ProductStatus`), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. `photo_url` is an accessor that `ProductResource` adds to responses: a root-relative URL (`/storage/uploads/...` or `/images/products/...`), so images load from the page's own origin under the CSP. `sku` is empty only for products created before SKUs existed. |
 | `product_tag` | `product_id`, `tag_id` | Pivot table for products and tags. |
 | `password_resets` | `email`, `token`, `created_at` | Password reset tokens (`config/auth.php`). |
 | `oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes` | | Laravel Passport. Client ids are UUIDs unless `PASSPORT_CLIENT_UUIDS=false`. |
 | `sessions`, `cache`, `cache_locks`, `failed_jobs` | | Laravel framework tables. |
-| `roles`, `role_user`, `social_accounts` | | Not used by any code. Kept for existing installations (see [TASKS.md](TASKS.md)). |
 
 Relations defined in the models:
 
 - `Product` belongs to `Category` (`category_id`).
-- `Product` belongs to many `Tag` through `product_tag`. The relation selects
-  the tag name as `text`, the format the tag input in the dashboard uses.
+- `Product` belongs to many `Tag` through `product_tag`. In product
+  responses `ProductTagResource` returns the tag name as `text`, the format
+  the tag input in the dashboard uses.
 - `User` has Passport tokens (`HasApiTokens`).
 
 The migrations do not create foreign key constraints. Deleting a category
@@ -295,27 +333,47 @@ on 8080, serves only `public/`, and the entrypoint runs
 
 ## Continuous integration
 
-- `.github/workflows/ci.yml`, on pushes to `main` and on pull requests:
+See [docs/ci-cd.md](docs/ci-cd.md) for when each workflow runs, how to turn
+the opt-in ones on, and which checks to require in branch protection.
+
+Always on:
+
+- `.github/workflows/ci.yml`, on pushes to `main`, on pull requests and on
+  demand:
   - **php**: `composer validate --strict`, `composer install`,
-    `composer audit`, Pint (`composer lint`), Larastan level 9
+    `composer audit`, Pint (`composer lint`), Larastan level 10
     (`composer analyse`) and `php artisan test`.
   - **frontend**: `npm ci`, ESLint, Prettier check, `npm audit
     --audit-level=moderate` and `npm run build`.
-  - **docker**: builds the `prod` target and checks that `/up` responds.
-- `.github/workflows/e2e.yml`, on pushes to `main`, on pull requests and on
-  demand: builds the `prod` image, starts the end-to-end stack with
-  `tests/e2e/setup/start-stack.sh` (the `prod` image, MySQL and Mailpit) and
-  runs the Playwright tests in Chromium with `tests/e2e/setup/run-tests.sh`.
-  The HTML report and traces are uploaded as the `playwright-report`
-  artifact.
-- `.github/workflows/zap.yml`, weekly, on demand and on pull requests to
-  `main` that change code or configuration that shapes HTTP responses:
-  starts the same stack and runs an OWASP ZAP baseline scan of the
-  signed-out pages. Only the rules set to `FAIL` in `.zap/rules.tsv` fail the
-  job; the report is uploaded as the `zap-baseline-report` artifact.
 - `.github/workflows/codeql.yml`: CodeQL for JavaScript/TypeScript and GitHub
   Actions on pull requests, pushes to `main` and weekly.
 - `.github/dependabot.yml`: weekly update pull requests for Composer, npm,
   Docker images, Docker Compose and GitHub Actions.
-- `azure-pipelines.yml`: a legacy Azure Pipelines check that runs the PHP test
-  suite in the `dev` image. GitHub Actions is the primary CI.
+
+Opt-in. Each of these runs on demand, on a pull request with its label
+(`run-docker-build`, `run-e2e`, `run-zap`), and on every pull request and
+push to `main` when its repository variable (`RUN_DOCKER_BUILD`,
+`RUN_E2E`, `RUN_ZAP`) is `true`; otherwise its job is skipped:
+
+- `.github/workflows/docker.yml`: builds the `prod` target and checks that
+  `/up` responds.
+- `.github/workflows/e2e.yml`: builds the `prod` image, starts the
+  end-to-end stack with `tests/e2e/setup/start-stack.sh` (the `prod` image,
+  MySQL and Mailpit) and runs the Playwright tests in Chromium with
+  `tests/e2e/setup/run-tests.sh`. The HTML report and traces are uploaded as
+  the `playwright-report` artifact.
+- `.github/workflows/zap.yml` (pull requests to `main` only, no push
+  trigger, plus a weekly run when `RUN_ZAP` is `true`): starts the same stack
+  and runs an OWASP ZAP baseline scan of the signed-out pages. Only the
+  rules set to `FAIL` in `.zap/rules.tsv` fail the job; the report is
+  uploaded as the `zap-baseline-report` artifact.
+
+Not run automatically:
+
+- `azure-pipelines.yml`: a legacy Azure Pipelines job that runs the PHP
+  test suite in the `dev` image. It runs only when started by hand in Azure
+  DevOps (`trigger: none`, `pr: none`).
+- `deploy/`: commented templates for deploying with GitHub Actions
+  (GitHub Container Registry), AWS (CodeBuild, ECR, ECS) and Azure
+  (Azure Pipelines, Azure Container Registry). None of them runs until
+  enabled.

@@ -1,10 +1,11 @@
 <?php
 
-use App\Http\Controllers\API\V1\CategoryController;
-use App\Http\Controllers\API\V1\ProductController;
-use App\Http\Controllers\API\V1\ProfileController;
-use App\Http\Controllers\API\V1\TagController;
-use App\Http\Controllers\API\V1\UserController;
+use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\TagController;
+use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Middleware\KeepSessionAfterPasswordChange;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,7 +25,9 @@ Route::get('version', fn () => response()->json(['version' => config('app.versio
 Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('profile', [ProfileController::class, 'profile']);
     Route::put('profile', [ProfileController::class, 'updateProfile']);
-    Route::post('change-password', [ProfileController::class, 'changePassword']);
+    // The SPA's own browser session stays signed in after the change; see the middleware.
+    Route::post('change-password', [ProfileController::class, 'changePassword'])
+        ->middleware(KeepSessionAfterPasswordChange::class);
     Route::get('tag/list', [TagController::class, 'list']);
     Route::get('category/list', [CategoryController::class, 'list']);
     Route::post('product/upload', [ProductController::class, 'upload']);

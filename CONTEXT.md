@@ -79,25 +79,27 @@ A short orientation for contributors. For setup instructions see
 
 ## Quality checks
 
-- PHP: `composer lint` (Pint), `composer analyse` (Larastan level 9),
+- PHP: `composer lint` (Pint), `composer analyse` (Larastan, level 10),
   `php artisan test`, `composer audit`.
 - JavaScript and Vue: `npm run lint` (ESLint), `npm run format:check`
   (Prettier), `npm run build`, `npm audit`.
-- CI runs all of the above (`.github/workflows/ci.yml`), plus CodeQL and a
-  production Docker build.
+- CI runs all of the above (`.github/workflows/ci.yml`), plus CodeQL. The
+  production Docker build (`docker.yml`), E2E tests and ZAP scan are opt-in:
+  label `run-docker-build` / `run-e2e` / `run-zap`, repository variable
+  `RUN_DOCKER_BUILD` / `RUN_E2E` / `RUN_ZAP` = `true`, or a manual run
+  (docs/ci-cd.md).
 - End-to-end tests: Playwright (Chromium) in `tests/e2e/`, run against a
   throwaway stack (production image, MySQL, Mailpit) started by
-  `tests/e2e/setup/start-stack.sh`. CI: `.github/workflows/e2e.yml` on every
-  pull request. Tests create their own data and never rely on the demo data.
+  `tests/e2e/setup/start-stack.sh`. CI: `.github/workflows/e2e.yml`
+  (opt-in). Tests create their own data and never rely on the demo data.
 - Security scan: an OWASP ZAP baseline scan of the signed-out pages against
-  the same stack (`.github/workflows/zap.yml`, weekly, on demand, and on pull
-  requests to `main` that change HTTP behaviour). Rules are in
-  `.zap/rules.tsv`.
+  the same stack (`.github/workflows/zap.yml`, opt-in; weekly when
+  `RUN_ZAP` is `true`). Rules are in `.zap/rules.tsv`.
 
 ## Guiding principles
 
 - Keep existing routes and CRUD behaviour working. Document behaviour changes
-  with upgrade and rollback steps in the README.
+  with upgrade and rollback steps in [docs/upgrading.md](docs/upgrading.md).
 - Never commit secrets. `.env.example` contains empty placeholders only.
 - Record real versions and real test results. Do not claim a check passed
   unless it was run.
