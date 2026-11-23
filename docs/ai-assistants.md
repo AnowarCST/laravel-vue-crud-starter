@@ -46,7 +46,10 @@ How each tool finds its files:
 The Claude Code allowlist only covers fixed commands. It contains no
 wildcards on purpose: a pattern such as `php artisan test *` would also
 approve options like `--bootstrap=<file>`, which run arbitrary code. Other
-commands, including filtered test runs, ask for approval as usual. The
+commands, including filtered test runs, ask for approval as usual.
+Auto-approved commands such as `npm run build` and `composer lint` run the
+scripts defined in `package.json` and `composer.json`, so they are only as
+safe as those files; changes to those files always need review. The
 `Read` deny rules only stop Claude Code from opening those files itself;
 they do not stop code that runs inside the containers (tests, Artisan
 commands, scripts) from reading secrets such as `.env`. Review what an
