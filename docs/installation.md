@@ -94,7 +94,11 @@ docker build -f docker/Dockerfile --target prod -t laravel-vue-crud-starter:prod
 ```
 
 The image includes production Composer dependencies and the built Vite
-assets. It does not include Composer, Node or git. Apache runs as `www-data` on
+assets. It does not include Composer, Node or git. `.dockerignore` also keeps
+the tests, the documentation (except `docs/api/openapi.yaml`, which `/docs`
+serves), the Markdown files (except `THIRD_PARTY_NOTICES.md`), the AI
+assistant instructions (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursor/`) and
+the development tool configuration out of the image. Apache runs as `www-data` on
 port 8080, and the image has a `HEALTHCHECK` on `/up`. Provide configuration as
 environment variables (never bake `.env` into the image). Mount `storage/` on a
 persistent volume, and run migrations explicitly after taking a backup:

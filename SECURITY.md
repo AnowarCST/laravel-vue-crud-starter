@@ -130,9 +130,10 @@ Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
 
 - Base images are pinned to exact patch tags.
 - The production image (`docker/Dockerfile`, target `prod`) contains no
-  Composer, Node, git or dev dependencies. Application code is owned by root
-  and read-only. Only `storage/` and `bootstrap/cache/` are writable by
-  `www-data`.
+  Composer, Node, git or dev dependencies, and no tests, repository
+  documentation or AI assistant instructions (`.dockerignore`). Application
+  code is owned by root and read-only. Only `storage/` and `bootstrap/cache/`
+  are writable by `www-data`.
 - Apache runs entirely as `www-data` on port 8080. Only `public/` is served.
   `vendor/`, `storage/`, dotfiles and backup/config file types are denied.
 - `docker-compose.yml` binds ports to `127.0.0.1` only, does not publish MySQL
