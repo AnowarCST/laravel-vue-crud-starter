@@ -1,368 +1,212 @@
-<style scoped>
-    .action-link {
-        cursor: pointer;
-    }
-</style>
-
 <template>
-    <div>
-        <div class="card card-default">
-            <div class="card-header">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>
-                        OAuth Clients
-                    </span>
-
-                    <a class="action-link" tabindex="-1" @click="showCreateClientForm">
-                        Create New Client
-                    </a>
-                </div>
-            </div>
-
-            <div class="card-body">
-                <!-- Current Clients -->
-                <p class="mb-0" v-if="clients.length === 0">
-                    You have not created any OAuth clients.
-                </p>
-
-                <table class="table table-borderless mb-0" v-if="clients.length > 0">
-                    <thead>
-                        <tr>
-                            <th>Client ID</th>
-                            <th>Name</th>
-                            <th>Secret</th>
-                            <th></th>
-                            <th></th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr v-for="client in clients">
-                            <!-- ID -->
-                            <td style="vertical-align: middle;">
-                                {{ client.id }}
-                            </td>
-
-                            <!-- Name -->
-                            <td style="vertical-align: middle;">
-                                {{ client.name }}
-                            </td>
-
-                            <!-- Secret -->
-                            <td style="vertical-align: middle;">
-                                <code>{{ client.secret }}</code>
-                            </td>
-
-                            <!-- Edit Button -->
-                            <td style="vertical-align: middle;">
-                                <a class="action-link" tabindex="-1" @click="edit(client)">
-                                    Edit
-                                </a>
-                            </td>
-
-                            <!-- Delete Button -->
-                            <td style="vertical-align: middle;">
-                                <a class="action-link text-danger" @click="destroy(client)">
-                                    Delete
-                                </a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Create Client Modal -->
-        <div class="modal fade" id="modal-create-client" tabindex="-1" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title">
-                            Create Client
-                        </h4>
-
-                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    </div>
-
-                    <div class="modal-body">
-                        <!-- Form Errors -->
-                        <div class="alert alert-danger" v-if="createForm.errors.length > 0">
-                            <p class="mb-0"><strong>Whoops!</strong> Something went wrong!</p>
-                            <br>
-                            <ul>
-                                <li v-for="error in createForm.errors">
-                                    {{ error }}
-                                </li>
-                            </ul>
-                        </div>
-
-                        <!-- Create Client Form -->
-                        <form role="form">
-                            <!-- Name -->
-                            <div class="form-group row">
-                                <label class="col-md-3 col-form-label">Name</label>
-
-                                <div class="col-md-9">
-                                    <input id="create-client-name" type="text" class="form-control"
-                                                                @keyup.enter="store" v-model="createForm.name">
-
-                                    <span class="form-text text-muted">
-                                        Something your users will recognize and trust.
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Redirect URL -->
-                            <div class="form-group row">
-                                <label class="col-md-3 col-form-label">Redirect URL</label>
-
-                                <div class="col-md-9">
-                                    <input type="text" class="form-control" name="redirect"
-                                                    @keyup.enter="store" v-model="createForm.redirect">
-
-                                    <span class="form-text text-muted">
-                                        Your application's authorization callback URL.
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Confidential -->
-                            <div class="form-group row">
-                                <label class="col-md-3 col-form-label">Confidential</label>
-
-                                <div class="col-md-9">
-                                    <div class="checkbox">
-                                        <label>
-                                            <input type="checkbox" v-model="createForm.confidential">
-                                        </label>
-                                    </div>
-
-                                    <span class="form-text text-muted">
-                                        Require the client to authenticate with a secret. Confidential clients can hold credentials in a secure way without exposing them to unauthorized parties. Public applications, such as native desktop or JavaScript SPA applications, are unable to hold secrets securely.
-                                    </span>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Modal Actions -->
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-
-                        <button type="button" class="btn btn-primary" @click="store">
-                            Create
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Edit Client Modal -->
-        <div class="modal fade" id="modal-edit-client" tabindex="-1" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title">
-                            Edit Client
-                        </h4>
-
-                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    </div>
-
-                    <div class="modal-body">
-                        <!-- Form Errors -->
-                        <div class="alert alert-danger" v-if="editForm.errors.length > 0">
-                            <p class="mb-0"><strong>Whoops!</strong> Something went wrong!</p>
-                            <br>
-                            <ul>
-                                <li v-for="error in editForm.errors">
-                                    {{ error }}
-                                </li>
-                            </ul>
-                        </div>
-
-                        <!-- Edit Client Form -->
-                        <form role="form">
-                            <!-- Name -->
-                            <div class="form-group row">
-                                <label class="col-md-3 col-form-label">Name</label>
-
-                                <div class="col-md-9">
-                                    <input id="edit-client-name" type="text" class="form-control"
-                                                                @keyup.enter="update" v-model="editForm.name">
-
-                                    <span class="form-text text-muted">
-                                        Something your users will recognize and trust.
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Redirect URL -->
-                            <div class="form-group row">
-                                <label class="col-md-3 col-form-label">Redirect URL</label>
-
-                                <div class="col-md-9">
-                                    <input type="text" class="form-control" name="redirect"
-                                                    @keyup.enter="update" v-model="editForm.redirect">
-
-                                    <span class="form-text text-muted">
-                                        Your application's authorization callback URL.
-                                    </span>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Modal Actions -->
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-
-                        <button type="button" class="btn btn-primary" @click="update">
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="card-title">OAuth clients</h3>
+      <div v-if="!unavailable" class="card-tools">
+        <button type="button" class="btn btn-sm btn-primary" @click="openCreate">
+          <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> Create new client
+        </button>
+      </div>
     </div>
+    <div class="card-body" :class="{ 'p-0': clients.length && !loadError }">
+      <div v-if="loadError" class="alert mb-0" :class="unavailable ? 'alert-secondary' : 'alert-danger'" role="alert">
+        <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i><template v-if="unavailable">Passport's JSON API is not available on this server. Use <code>php artisan passport:client</code> to manage OAuth clients from the command line.</template><template v-else>{{ loadError }}</template>
+      </div>
+      <p v-else-if="loaded && !clients.length" class="mb-0 text-secondary">You have not created any OAuth clients.</p>
+      <div v-else-if="clients.length" class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Client ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">Redirect URIs</th>
+              <th scope="col" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="client in clients" :key="client.id">
+              <td><code class="secret-value">{{ client.id }}</code></td>
+              <td>{{ client.name }}</td>
+              <td class="text-break">{{ redirectsOf(client).join(', ') || '—' }}</td>
+              <td class="text-end text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-primary me-1" :aria-label="`Edit ${client.name}`" @click="openEdit(client)">
+                  <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" :aria-label="`Delete ${client.name}`" @click="destroy(client)">
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div ref="modal" class="modal fade" tabindex="-1" aria-labelledby="clientModalTitle" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" novalidate @submit.prevent="save">
+          <div class="modal-header">
+            <h5 id="clientModalTitle" class="modal-title">{{ form.id ? 'Edit client' : 'Create client' }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="formError" class="alert alert-danger" role="alert">{{ formError }}</div>
+            <div class="mb-3">
+              <label for="client_name" class="form-label">Name</label>
+              <input id="client_name" v-model="form.name" type="text" maxlength="255" class="form-control" :class="{ 'is-invalid': errors.name }">
+              <div v-if="errors.name" class="invalid-feedback">{{ errors.name[0] }}</div>
+              <div class="form-text">Something your users will recognize and trust.</div>
+            </div>
+            <div class="mb-3">
+              <label for="client_redirect" class="form-label">Redirect URL(s)</label>
+              <input id="client_redirect" v-model="form.redirect" type="text" class="form-control" :class="{ 'is-invalid': errors.redirect }">
+              <div v-if="errors.redirect" class="invalid-feedback">{{ errors.redirect[0] }}</div>
+              <div class="form-text">Your application's authorization callback URL. Separate multiple URLs with commas.</div>
+            </div>
+            <div v-if="!form.id" class="form-check">
+              <input id="client_confidential" v-model="form.confidential" class="form-check-input" type="checkbox">
+              <label for="client_confidential" class="form-check-label">Confidential client (has a secret)</label>
+              <div class="form-text">Uncheck for SPAs / mobile apps that cannot keep a secret; they must use PKCE.</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary" :disabled="busy">{{ form.id ? 'Save changes' : 'Create' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div ref="secretModal" class="modal fade" tabindex="-1" aria-labelledby="clientSecretTitle" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 id="clientSecretTitle" class="modal-title">Client created</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-1">Client ID</p>
+            <p><code class="secret-value">{{ created.id }}</code></p>
+            <template v-if="created.secret">
+              <p class="mb-1">Client secret</p>
+              <p><code class="secret-value">{{ created.secret }}</code></p>
+              <div class="alert alert-warning mb-0" role="alert">
+                Copy the secret now. It is stored hashed and will not be shown again.
+              </div>
+            </template>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-    export default {
-        /*
-         * The component's data.
-         */
-        data() {
-            return {
-                clients: [],
+import axios from 'axios';
+import { showModal, hideModal } from '../../bootstrap';
+import { confirmDelete, toastError, toastSuccess } from '../../lib/notify';
+import { describePassportError, validationErrors } from '../../lib/passport';
 
-                createForm: {
-                    errors: [],
-                    name: '',
-                    redirect: '',
-                    confidential: true
-                },
+const blankForm = () => ({ id: null, name: '', redirect: '', confidential: true });
 
-                editForm: {
-                    errors: [],
-                    name: '',
-                    redirect: ''
-                }
-            };
+export default {
+    data() {
+        return {
+            clients: [],
+            loaded: false,
+            loadError: '',
+            unavailable: false,
+            busy: false,
+            form: blankForm(),
+            errors: {},
+            formError: '',
+            created: { id: '', secret: '' },
+        };
+    },
+    created() {
+        this.load();
+    },
+    mounted() {
+        // Never keep a plaintext secret around after the dialog closes.
+        this.$refs.secretModal.addEventListener('hidden.bs.modal', this.forgetSecret);
+    },
+    beforeUnmount() {
+        this.$refs.secretModal?.removeEventListener('hidden.bs.modal', this.forgetSecret);
+        hideModal(this.$refs.modal);
+        hideModal(this.$refs.secretModal);
+        this.forgetSecret();
+    },
+    methods: {
+        redirectsOf(client) {
+            if (Array.isArray(client.redirect_uris)) return client.redirect_uris;
+            return client.redirect ? String(client.redirect).split(',') : [];
         },
-
-        /**
-         * Prepare the component (Vue 1.x).
-         */
-        ready() {
-            this.prepareComponent();
-        },
-
-        /**
-         * Prepare the component (Vue 2.x).
-         */
-        mounted() {
-            this.prepareComponent();
-        },
-
-        methods: {
-            /**
-             * Prepare the component.
-             */
-            prepareComponent() {
-                this.getClients();
-
-                $('#modal-create-client').on('shown.bs.modal', () => {
-                    $('#create-client-name').focus();
-                });
-
-                $('#modal-edit-client').on('shown.bs.modal', () => {
-                    $('#edit-client-name').focus();
-                });
-            },
-
-            /**
-             * Get all of the OAuth clients for the user.
-             */
-            getClients() {
-                axios.get('/oauth/clients')
-                        .then(response => {
-                            this.clients = response.data;
-                        });
-            },
-
-            /**
-             * Show the form for creating new clients.
-             */
-            showCreateClientForm() {
-                $('#modal-create-client').modal('show');
-            },
-
-            /**
-             * Create a new OAuth client for the user.
-             */
-            store() {
-                this.persistClient(
-                    'post', '/oauth/clients',
-                    this.createForm, '#modal-create-client'
-                );
-            },
-
-            /**
-             * Edit the given client.
-             */
-            edit(client) {
-                this.editForm.id = client.id;
-                this.editForm.name = client.name;
-                this.editForm.redirect = client.redirect;
-
-                $('#modal-edit-client').modal('show');
-            },
-
-            /**
-             * Update the client being edited.
-             */
-            update() {
-                this.persistClient(
-                    'put', '/oauth/clients/' + this.editForm.id,
-                    this.editForm, '#modal-edit-client'
-                );
-            },
-
-            /**
-             * Persist the client to storage using the given form.
-             */
-            persistClient(method, uri, form, modal) {
-                form.errors = [];
-
-                axios[method](uri, form)
-                    .then(response => {
-                        this.getClients();
-
-                        form.name = '';
-                        form.redirect = '';
-                        form.errors = [];
-
-                        $(modal).modal('hide');
-                    })
-                    .catch(error => {
-                        if (typeof error.response.data === 'object') {
-                            form.errors = _.flatten(_.toArray(error.response.data.errors));
-                        } else {
-                            form.errors = ['Something went wrong. Please try again.'];
-                        }
-                    });
-            },
-
-            /**
-             * Destroy the given client.
-             */
-            destroy(client) {
-                axios.delete('/oauth/clients/' + client.id)
-                        .then(response => {
-                            this.getClients();
-                        });
+        async load() {
+            try {
+                const { data } = await axios.get('/oauth/clients');
+                this.clients = Array.isArray(data) ? data : [];
+                this.loadError = '';
+                this.unavailable = false;
+            } catch (error) {
+                const { unavailable, message } = describePassportError(error, 'Unable to load OAuth clients.');
+                this.unavailable = unavailable;
+                this.loadError = message;
+            } finally {
+                this.loaded = true;
             }
-        }
-    }
+        },
+        openCreate() {
+            this.form = blankForm();
+            this.errors = {};
+            this.formError = '';
+            showModal(this.$refs.modal);
+        },
+        openEdit(client) {
+            this.form = { id: client.id, name: client.name, redirect: this.redirectsOf(client).join(','), confidential: true };
+            this.errors = {};
+            this.formError = '';
+            showModal(this.$refs.modal);
+        },
+        async save() {
+            this.busy = true;
+            this.errors = {};
+            this.formError = '';
+            const payload = { name: this.form.name, redirect: this.form.redirect };
+            try {
+                if (this.form.id) {
+                    await axios.put(`/oauth/clients/${encodeURIComponent(this.form.id)}`, payload);
+                    hideModal(this.$refs.modal);
+                    toastSuccess('Client updated');
+                } else {
+                    const { data } = await axios.post('/oauth/clients', { ...payload, confidential: Boolean(this.form.confidential) });
+                    hideModal(this.$refs.modal);
+                    this.created = { id: data?.id ?? '', secret: data?.plain_secret || data?.plainSecret || data?.secret || '' };
+                    showModal(this.$refs.secretModal);
+                }
+                this.load();
+            } catch (error) {
+                this.errors = validationErrors(error);
+                if (!Object.keys(this.errors).length) this.formError = describePassportError(error, 'Unable to save the client.').message;
+            } finally {
+                this.busy = false;
+            }
+        },
+        async destroy(client) {
+            if (!(await confirmDelete(`client "${client.name}"`))) return;
+            try {
+                await axios.delete(`/oauth/clients/${encodeURIComponent(client.id)}`);
+                toastSuccess('Client deleted');
+                this.load();
+            } catch (error) {
+                toastError(describePassportError(error, 'Unable to delete the client.').message);
+            }
+        },
+        forgetSecret() {
+            this.created = { id: '', secret: '' };
+        },
+    },
+};
 </script>

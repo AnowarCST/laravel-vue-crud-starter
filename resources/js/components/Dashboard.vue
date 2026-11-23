@@ -1,212 +1,146 @@
 <template>
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row ">
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-info elevation-1"><i class="fas fa-cog"></i></span>
+  <div>
+    <div class="row">
+      <div v-for="box in boxes" :key="box.label" class="col-lg-3 col-6">
+        <div class="small-box" :class="box.theme">
+          <div class="inner">
+            <h3>{{ box.value ?? '—' }}</h3>
+            <p>{{ box.label }}</p>
+          </div>
+          <i class="small-box-icon fa-solid" :class="box.icon" aria-hidden="true"></i>
+          <router-link :to="box.to" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+            More info <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </router-link>
+        </div>
+      </div>
+    </div>
 
-                        <div class="info-box-content">
-                            <span class="info-box-text">CPU Traffic</span>
-                            <span class="info-box-number">
-                            10
-                            <small>%</small>
-                            </span>
-                        </div>
-                        <!-- /.info-box-content -->
-                    </div>
-                    <!-- /.info-box -->
-                </div>
-                <!-- /.col -->
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="info-box mb-3">
-                        <span class="info-box-icon bg-danger elevation-1"><i class="fas fa-thumbs-up"></i></span>
-
-                        <div class="info-box-content">
-                            <span class="info-box-text">Likes</span>
-                            <span class="info-box-number">41,410</span>
-                        </div>
-                        <!-- /.info-box-content -->
-                    </div>
-                    <!-- /.info-box -->
-                </div>
-                <!-- /.col -->
-
-                <!-- fix for small devices only -->
-                <div class="clearfix hidden-md-up"></div>
-
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="info-box mb-3">
-                        <span class="info-box-icon bg-success elevation-1"><i class="fas fa-shopping-cart"></i></span>
-
-                        <div class="info-box-content">
-                            <span class="info-box-text">Sales</span>
-                            <span class="info-box-number">760</span>
-                        </div>
-                        <!-- /.info-box-content -->
-                    </div>
-                    <!-- /.info-box -->
-                </div>
-                <!-- /.col -->
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="info-box mb-3">
-                        <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-users"></i></span>
-
-                        <div class="info-box-content">
-                            <span class="info-box-text">New Members</span>
-                            <span class="info-box-number">2,000</span>
-                        </div>
-                    <!-- /.info-box-content -->
-                    </div>
-                    <!-- /.info-box -->
-                </div>
-            <!-- /.col -->
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3 class="card-title">Latest products</h3>
+            <div class="card-tools">
+              <router-link to="/products" class="btn btn-sm btn-outline-primary">View all</router-link>
             </div>
-            <!-- /.row -->
+          </div>
+          <div class="card-body table-responsive p-0">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Category</th>
+                  <th scope="col" class="text-end">Price</th>
+                  <th scope="col">Added</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="product in latestProducts" :key="product.id">
+                  <td>{{ product.name }}</td>
+                  <td class="text-capitalize">{{ product.category?.name || '—' }}</td>
+                  <td class="text-end">{{ formatCurrency(product.price) }}</td>
+                  <td>{{ formatDate(product.created_at) }}</td>
+                </tr>
+                <tr v-if="loaded && !latestProducts.length">
+                  <td colspan="4" class="text-center text-secondary py-4">No products yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-            <div class="row">
-                <!-- Left col -->
-                <div class="col-md-8">
-                    <!-- MAP & BOX PANE -->
-                    <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Latest Orders (Demo)</h3>
-
-                        <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <button type="button" class="btn btn-tool" data-card-widget="remove">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        </div>
-                    </div>
-                    <!-- /.card-header -->
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                        <table class="table m-0">
-                            <thead>
-                                <tr>
-                                    <th>Order ID</th>
-                                    <th>Item</th>
-                                    <th>Status</th>
-                                    <th>Popularity</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><a href="pages/examples/invoice.html">OR9842</a></td>
-                                    <td>Call of Duty IV</td>
-                                    <td><span class="badge badge-success">Shipped</span></td>
-                                    <td>
-                                        <div class="sparkbar" data-color="#00a65a" data-height="20">90,80,90,-70,61,-83,63</div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="pages/examples/invoice.html">OR1848</a></td>
-                                    <td>Samsung Smart TV</td>
-                                    <td><span class="badge badge-warning">Pending</span></td>
-                                    <td>
-                                        <div class="sparkbar" data-color="#f39c12" data-height="20">90,80,-90,70,61,-83,68</div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="pages/examples/invoice.html">OR7429</a></td>
-                                    <td>iPhone 6 Plus</td>
-                                    <td><span class="badge badge-danger">Delivered</span></td>
-                                    <td>
-                                        <div class="sparkbar" data-color="#f56954" data-height="20">90,-80,90,70,-61,83,63</div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="pages/examples/invoice.html">OR7429</a></td>
-                                    <td>Samsung Smart TV</td>
-                                    <td><span class="badge badge-info">Processing</span></td>
-                                    <td>
-                                        <div class="sparkbar" data-color="#00c0ef" data-height="20">90,80,-90,70,-61,83,63</div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="pages/examples/invoice.html">OR1848</a></td>
-                                    <td>Samsung Smart TV</td>
-                                    <td><span class="badge badge-warning">Pending</span></td>
-                                    <td>
-                                        <div class="sparkbar" data-color="#f39c12" data-height="20">90,80,-90,70,61,-83,68</div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="pages/examples/invoice.html">OR7429</a></td>
-                                    <td>iPhone 6 Plus</td>
-                                    <td><span class="badge badge-danger">Delivered</span></td>
-                                    <td>
-                                        <div class="sparkbar" data-color="#f56954" data-height="20">90,-80,90,70,-61,83,63</div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        </div>
-                    </div>
-                <!-- /.card-body -->
-                </div>
-                <!-- /.card -->
-                <!-- /.card -->
-            </div>
-            <!-- /.col -->
-
-            <div class="col-md-4">
-                <!-- Info Boxes Style 2 -->
-                <div class="info-box mb-3 bg-secondary">
-                <span class="info-box-icon"><i class="fas fa-tag"></i></span>
-
-                <div class="info-box-content">
-                    <span class="info-box-text">Inventory</span>
-                    <span class="info-box-number">5,200</span>
-                </div>
-                <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
-                <div class="info-box mb-3 bg-success">
-                <span class="info-box-icon"><i class="far fa-heart"></i></span>
-
-                <div class="info-box-content">
-                    <span class="info-box-text">Mentions</span>
-                    <span class="info-box-number">92,050</span>
-                </div>
-                <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
-                <div class="info-box mb-3 bg-danger">
-                <span class="info-box-icon"><i class="fas fa-cloud-download-alt"></i></span>
-
-                <div class="info-box-content">
-                    <span class="info-box-text">Downloads</span>
-                    <span class="info-box-number">114,381</span>
-                </div>
-                <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
-                <div class="info-box mb-3 bg-info">
-                <span class="info-box-icon"><i class="far fa-comment"></i></span>
-
-                <div class="info-box-content">
-                    <span class="info-box-text">Direct Messages</span>
-                    <span class="info-box-number">163,921</span>
-                </div>
-                <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
-            </div>
-            <!-- /.col -->
-            </div>
-            <!-- /.row -->
-        </div><!--/. container-fluid -->
-    </section>
+      <div class="col-lg-4">
+        <div class="card mb-4">
+          <div class="card-header"><h3 class="card-title">Welcome</h3></div>
+          <div class="card-body">
+            <p class="mb-2">Signed in as <strong>{{ user.name }}</strong> <span class="badge text-bg-secondary text-capitalize">{{ user.type }}</span></p>
+            <p class="text-secondary mb-0">Application version: {{ version || 'unknown' }}</p>
+          </div>
+        </div>
+        <div class="card mb-4">
+          <div class="card-header"><h3 class="card-title">Shortcuts</h3></div>
+          <div class="list-group list-group-flush">
+            <router-link to="/products" class="list-group-item list-group-item-action"><i class="fa-solid fa-box me-2" aria-hidden="true"></i>Manage products</router-link>
+            <router-link v-if="$gate.isAdmin()" to="/users" class="list-group-item list-group-item-action"><i class="fa-solid fa-users me-2" aria-hidden="true"></i>Manage users</router-link>
+            <router-link to="/profile" class="list-group-item list-group-item-action"><i class="fa-solid fa-user-gear me-2" aria-hidden="true"></i>Edit profile</router-link>
+            <router-link to="/developer" class="list-group-item list-group-item-action"><i class="fa-solid fa-code me-2" aria-hidden="true"></i>API tokens &amp; OAuth clients</router-link>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-    export default {
-        mounted() {
-            console.log('Component mounted.')
-        }
+import axios from 'axios';
+import { track } from '../lib/progress';
+import { currentUser } from '../lib/user';
+import { formatCurrency } from '../lib/format';
+
+// Every number shown here comes from the API; nothing is mocked.
+async function total(url) {
+    try {
+        const { data } = await axios.get(url);
+        return typeof data?.data?.total === 'number' ? data.data.total : null;
+    } catch {
+        return null;
     }
+}
+
+export default {
+    data() {
+        return {
+            user: currentUser,
+            loaded: false,
+            version: '',
+            latestProducts: [],
+            counts: { products: null, categories: null, tags: null, users: null },
+        };
+    },
+    computed: {
+        boxes() {
+            const boxes = [
+                { label: 'Products', value: this.counts.products, icon: 'fa-box', theme: 'text-bg-primary', to: '/products' },
+            ];
+            if (this.$gate.isAdmin()) {
+                boxes.push(
+                    { label: 'Categories', value: this.counts.categories, icon: 'fa-layer-group', theme: 'text-bg-success', to: '/product/category' },
+                    { label: 'Tags', value: this.counts.tags, icon: 'fa-tags', theme: 'text-bg-warning', to: '/product/tag' },
+                    { label: 'Users', value: this.counts.users, icon: 'fa-users', theme: 'text-bg-danger', to: '/users' },
+                );
+            }
+            return boxes;
+        },
+    },
+    created() {
+        this.load();
+    },
+    methods: {
+        formatCurrency,
+        async load() {
+            const isAdmin = this.$gate.isAdmin();
+            const [products, version, categories, tags, users] = await track(Promise.allSettled([
+                axios.get('/api/product'),
+                axios.get('/api/version'),
+                isAdmin ? total('/api/category') : null,
+                isAdmin ? total('/api/tag') : null,
+                isAdmin ? total('/api/user') : null,
+            ]));
+
+            if (products.status === 'fulfilled') {
+                const page = products.value.data?.data || {};
+                this.counts.products = typeof page.total === 'number' ? page.total : null;
+                this.latestProducts = (page.data || []).slice(0, 5);
+            }
+            if (version.status === 'fulfilled' && typeof version.value.data?.version === 'string') {
+                this.version = version.value.data.version;
+            }
+            this.counts.categories = categories.value ?? null;
+            this.counts.tags = tags.value ?? null;
+            this.counts.users = users.value ?? null;
+            this.loaded = true;
+        },
+    },
+};
 </script>

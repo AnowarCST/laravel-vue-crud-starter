@@ -1,21 +1,21 @@
-export default class Gate{
-
-    constructor(user){
-        this.user = user;
+/**
+ * Client-side role checks for showing/hiding UI only.
+ * The API enforces authorization independently.
+ */
+export default class Gate {
+    constructor(user) {
+        this.user = user || {};
     }
 
-    isAdmin(){
+    isAdmin() {
         return this.user.type === 'admin';
     }
 
-    isUser(){
+    isUser() {
         return this.user.type === 'user';
     }
-    
-    isAdminOrUser(){
-        if(this.user.type === 'user' || this.user.type === 'admin'){
-            return true;
-        }
+
+    isAdminOrUser() {
+        return this.isAdmin() || this.isUser();
     }
 }
-

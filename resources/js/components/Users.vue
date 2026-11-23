@@ -1,260 +1,190 @@
 <template>
-  <section class="content">
-    <div class="container-fluid">
-        <div class="row">
-
-          <div class="col-12">
-        
-            <div class="card" v-if="$gate.isAdmin()">
-              <div class="card-header">
-                <h3 class="card-title">User List</h3>
-
-                <div class="card-tools">
-                  
-                  <button type="button" class="btn btn-sm btn-primary" @click="newModal">
-                      <i class="fa fa-plus-square"></i>
-                      Add New
-                  </button>
-                </div>
-              </div>
-              <!-- /.card-header -->
-              <div class="card-body table-responsive p-0">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Type</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Email Verified?</th>
-                      <th>Created</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                     <tr v-for="user in users.data" :key="user.id">
-
-                      <td>{{user.id}}</td>
-                      <td class="text-capitalize">{{user.type}}</td>
-                      <td class="text-capitalize">{{user.name}}</td>
-                      <td>{{user.email}}</td>
-                      <td :inner-html.prop="user.email_verified_at | yesno"></td>
-                      <td>{{user.created_at}}</td>
-
-                      <td>
-
-                        <a href="#" @click="editModal(user)">
-                            <i class="fa fa-edit blue"></i>
-                        </a>
-                        /
-                        <a href="#" @click="deleteUser(user.id)">
-                            <i class="fa fa-trash red"></i>
-                        </a>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!-- /.card-body -->
-              <div class="card-footer">
-                  <pagination :data="users" @pagination-change-page="getResults"></pagination>
-              </div>
-            </div>
-            <!-- /.card -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">User list <span class="text-secondary small">({{ users.total || 0 }})</span></h3>
+          <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" @click="openCreate">
+              <i class="fa-solid fa-user-plus me-1" aria-hidden="true"></i> Add new
+            </button>
           </div>
         </div>
-
-
-        <div v-if="!$gate.isAdmin()">
-            <not-found></not-found>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Type</th>
+                <th scope="col">Email verified</th>
+                <th scope="col">Created</th>
+                <th scope="col" class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in users.data || []" :key="user.id">
+                <td>{{ user.id }}</td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td><span class="badge text-capitalize" :class="user.type === 'admin' ? 'text-bg-primary' : 'text-bg-secondary'">{{ user.type }}</span></td>
+                <td>
+                  <span v-if="user.email_verified_at" class="text-success"><i class="fa-solid fa-check me-1" aria-hidden="true"></i>Yes</span>
+                  <span v-else class="text-secondary">No</span>
+                </td>
+                <td>{{ formatDate(user.created_at) }}</td>
+                <td class="text-end text-nowrap">
+                  <button type="button" class="btn btn-sm btn-outline-primary me-1" :aria-label="`Edit ${user.name}`" @click="openEdit(user)">
+                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" :aria-label="`Delete ${user.name}`" :disabled="user.id === me.id" @click="remove(user)">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="loaded && !(users.data || []).length">
+                <td colspan="7" class="text-center text-secondary py-4">No users found.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <!-- Modal -->
-        <div class="modal fade" id="addNew" tabindex="-1" role="dialog" aria-labelledby="addNew" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" v-show="!editmode">Create New User</h5>
-                    <h5 class="modal-title" v-show="editmode">Update User's Info</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-
-                <!-- <form @submit.prevent="createUser"> -->
-
-                <form @submit.prevent="editmode ? updateUser() : createUser()">
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Name</label>
-                            <input v-model="form.name" type="text" name="name"
-                                class="form-control" :class="{ 'is-invalid': form.errors.has('name') }">
-                            <has-error :form="form" field="name"></has-error>
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input v-model="form.email" type="text" name="email"
-                                class="form-control" :class="{ 'is-invalid': form.errors.has('email') }">
-                            <has-error :form="form" field="email"></has-error>
-                        </div>
-                    
-                        <div class="form-group">
-                            <label>Password</label>
-                            <input v-model="form.password" type="password" name="password"
-                                class="form-control" :class="{ 'is-invalid': form.errors.has('password') }" autocomplete="false">
-                            <has-error :form="form" field="password"></has-error>
-                        </div>
-                    
-                        <div class="form-group">
-                            <label>User Role</label>
-                            <select name="type" v-model="form.type" id="type" class="form-control" :class="{ 'is-invalid': form.errors.has('type') }">
-                                <option value="">Select User Role</option>
-                                <option value="admin">Admin</option>
-                                <option value="user">Standard User</option>
-                            </select>
-                            <has-error :form="form" field="type"></has-error>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button v-show="editmode" type="submit" class="btn btn-success">Update</button>
-                        <button v-show="!editmode" type="submit" class="btn btn-primary">Create</button>
-                    </div>
-                  </form>
-                </div>
-            </div>
+        <div class="card-footer clearfix">
+          <pagination :data="users" @pagination-change-page="load" />
         </div>
+      </div>
     </div>
-  </section>
+
+    <div ref="modal" class="modal fade" tabindex="-1" aria-labelledby="userModalTitle" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" novalidate @submit.prevent="save">
+          <div class="modal-header">
+            <h5 id="userModalTitle" class="modal-title">{{ editMode ? 'Update user' : 'Create new user' }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="user_name" class="form-label">Name</label>
+              <input id="user_name" v-model="form.name" type="text" maxlength="191" autocomplete="off" class="form-control" :class="{ 'is-invalid': form.errors.has('name') }">
+              <has-error :form="form" field="name" />
+            </div>
+            <div class="mb-3">
+              <label for="user_email" class="form-label">Email</label>
+              <input id="user_email" v-model="form.email" type="email" maxlength="191" autocomplete="off" class="form-control" :class="{ 'is-invalid': form.errors.has('email') }">
+              <has-error :form="form" field="email" />
+            </div>
+            <div class="mb-3">
+              <label for="user_password" class="form-label">Password</label>
+              <input
+                id="user_password"
+                v-model="form.password"
+                type="password"
+                minlength="12"
+                maxlength="72"
+                autocomplete="new-password"
+                class="form-control"
+                :class="{ 'is-invalid': form.errors.has('password') }"
+                :placeholder="editMode ? 'Leave blank to keep the current password' : ''"
+                aria-describedby="user_password_help"
+              >
+              <div id="user_password_help" class="form-text">At least 12 characters.</div>
+              <has-error :form="form" field="password" />
+            </div>
+            <div class="mb-3">
+              <label for="user_type" class="form-label">Type</label>
+              <select id="user_type" v-model="form.type" class="form-select" :class="{ 'is-invalid': form.errors.has('type') }">
+                <option disabled value="">Select user role</option>
+                <option value="admin">Admin</option>
+                <option value="user">Standard user</option>
+              </select>
+              <has-error :form="form" field="type" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary" :disabled="form.busy">{{ editMode ? 'Update' : 'Create' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-    export default {
-        data () {
-            return {
-                editmode: false,
-                users : {},
-                form: new Form({
-                    id : '',
-                    type : '',
-                    name: '',
-                    email: '',
-                    password: '',
-                    email_verified_at: '',
-                })
+import axios from 'axios';
+import { Form } from '../lib/Form';
+import { track } from '../lib/progress';
+import { currentUser } from '../lib/user';
+import { showModal, hideModal } from '../bootstrap';
+import { confirmDelete, errorMessage, toastError, toastSuccess } from '../lib/notify';
+
+export default {
+    data() {
+        return {
+            me: currentUser,
+            editMode: false,
+            loaded: false,
+            page: 1,
+            users: {},
+            form: new Form({ id: '', name: '', email: '', password: '', type: '' }),
+        };
+    },
+    created() {
+        if (this.$gate.isAdmin()) this.load();
+    },
+    beforeUnmount() {
+        hideModal(this.$refs.modal);
+    },
+    methods: {
+        async load(page = this.page) {
+            try {
+                const { data } = await track(axios.get('/api/user', { params: { page } }));
+                this.users = data.data || {};
+                this.page = this.users.current_page || page;
+                if (!(this.users.data || []).length && page > 1) return this.load(page - 1);
+            } catch (error) {
+                toastError(errorMessage(error, 'Unable to load users.'));
+            } finally {
+                this.loaded = true;
             }
         },
-        methods: {
-
-            getResults(page = 1) {
-
-                  this.$Progress.start();
-                  
-                  axios.get('api/user?page=' + page).then(({ data }) => (this.users = data.data));
-
-                  this.$Progress.finish();
-            },
-            updateUser(){
-                this.$Progress.start();
-                // console.log('Editing data');
-                this.form.put('api/user/'+this.form.id)
-                .then((response) => {
-                    // success
-                    $('#addNew').modal('hide');
-                    Toast.fire({
-                      icon: 'success',
-                      title: response.data.message
-                    });
-                    this.$Progress.finish();
-                        //  Fire.$emit('AfterCreate');
-
-                    this.loadUsers();
-                })
-                .catch(() => {
-                    this.$Progress.fail();
-                });
-
-            },
-            editModal(user){
-                this.editmode = true;
-                this.form.reset();
-                $('#addNew').modal('show');
-                this.form.fill(user);
-            },
-            newModal(){
-                this.editmode = false;
-                this.form.reset();
-                $('#addNew').modal('show');
-            },
-            deleteUser(id){
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "You won't be able to revert this!",
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, delete it!'
-                    }).then((result) => {
-
-                        // Send request to the server
-                         if (result.value) {
-                                this.form.delete('api/user/'+id).then(()=>{
-                                        Swal.fire(
-                                        'Deleted!',
-                                        'Your file has been deleted.',
-                                        'success'
-                                        );
-                                    // Fire.$emit('AfterCreate');
-                                    this.loadUsers();
-                                }).catch((data)=> {
-                                  Swal.fire("Failed!", data.message, "warning");
-                              });
-                         }
-                    })
-            },
-          loadUsers(){
-            this.$Progress.start();
-
-            if(this.$gate.isAdmin()){
-              axios.get("api/user").then(({ data }) => (this.users = data.data));
+        openCreate() {
+            this.editMode = false;
+            this.form.reset();
+            showModal(this.$refs.modal);
+        },
+        openEdit(user) {
+            this.editMode = true;
+            this.form.reset();
+            this.form.fill({ id: user.id, name: user.name, email: user.email, type: user.type });
+            showModal(this.$refs.modal);
+        },
+        async save() {
+            const payload = { name: this.form.name, email: this.form.email, type: this.form.type };
+            // On update an empty password means "keep the current one".
+            if (!this.editMode || this.form.password) payload.password = this.form.password;
+            try {
+                const response = this.editMode
+                    ? await track(this.form.put(`/api/user/${this.form.id}`, payload))
+                    : await track(this.form.post('/api/user', payload));
+                this.form.password = '';
+                hideModal(this.$refs.modal);
+                toastSuccess(response.data.message);
+                this.load();
+            } catch (error) {
+                toastError(errorMessage(error));
             }
-
-            this.$Progress.finish();
-          },
-          
-          createUser(){
-
-              this.form.post('api/user')
-              .then((response)=>{
-                  $('#addNew').modal('hide');
-
-                  Toast.fire({
-                        icon: 'success',
-                        title: response.data.message
-                  });
-
-                  this.$Progress.finish();
-                  this.loadUsers();
-
-              })
-              .catch(()=>{
-
-                  Toast.fire({
-                      icon: 'error',
-                      title: 'Some error occured! Please try again'
-                  });
-              })
-          }
-
         },
-        mounted() {
-            console.log('User Component mounted.')
+        async remove(user) {
+            if (!(await confirmDelete(`user "${user.name}"`))) return;
+            try {
+                const response = await track(axios.delete(`/api/user/${user.id}`));
+                toastSuccess(response.data.message);
+                this.load();
+            } catch (error) {
+                toastError(errorMessage(error));
+            }
         },
-        created() {
-
-            this.$Progress.start();
-            this.loadUsers();
-            this.$Progress.finish();
-        }
-    }
+    },
+};
 </script>
