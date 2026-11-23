@@ -6,35 +6,35 @@ name: ZAP baseline
 # this job (-I), every other finding is listed in the job log and the
 # "zap-baseline-report" artifact.
 #
-# Runs weekly, on demand, and on pull requests to main that change code or
-# configuration that shapes HTTP responses (headers, cookies, CSP, Apache).
-# The path filter keeps the 5-10 minute scan off unrelated pull requests.
+# Opt-in, because it builds the production image and starts a full stack
+# for every run. It runs:
+#   - on demand: Actions tab > ZAP baseline > Run workflow (any branch);
+#   - on a pull request to main that has the "run-zap" label (adding the
+#     label starts it; later pushes to the pull request run it again);
+#   - every Monday and on every pull request to main when the repository
+#     variable RUN_ZAP is "true" (Settings > Secrets and variables > Actions >
+#     Variables).
+# Otherwise the job is skipped, which GitHub reports as a success. See
+# docs/ci-cd.md.
+#
+# There is no path filter: a workflow-level filter would also stop the
+# "run-zap" label from working on pull requests outside those paths.
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "23 4 * * 1" # Mondays 04:23 UTC
+    - cron: "23 4 * * 1" # Mondays 04:23 UTC, only when RUN_ZAP is "true"
   pull_request:
     branches: [main]
-    paths:
-      - "app/**"
-      - "bootstrap/**"
-      - "config/**"
-      - "routes/**"
-      - "resources/views/**"
-      - "public/**"
-      - "docker/**"
-      - "composer.lock"
-      - ".zap/**"
-      - "tests/e2e/compose.yaml"
-      - "tests/e2e/setup/**"
-      - ".github/workflows/zap.yml"
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: read
 
+# Runs started by adding some other label do nothing, so they get their own
+# group and never cancel a real run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name || 'code' }}
   cancel-in-progress: true
 
 env:
@@ -44,6 +44,14 @@ env:
 jobs:
   baseline:
     name: ZAP baseline scan
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'schedule' && vars.RUN_ZAP == 'true')
+      || (github.event_name == 'pull_request' && (
+        (github.event.action == 'labeled' && github.event.label.name == 'run-zap')
+        || (github.event.action != 'labeled' && (vars.RUN_ZAP == 'true'
+          || contains(github.event.pull_request.labels.*.name, 'run-zap')))
+      ))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
