@@ -168,7 +168,7 @@ flowchart LR
 | `app/Http/Responses/ApiResponse.php` | The `{success, data, message}` envelope of successful API responses. |
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
-| `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
+| `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers), `AuthorizeApiDocs` and `KeepSessionAfterPasswordChange` (keeps the browser that changed its password signed in). |
 | `app/Http/Requests/` | Form Requests: `Categories/CategoryRequest`, `Tags/TagRequest`, `Products/ProductRequest`, `Products/ProductIndexRequest`, `Products/ProductImageRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
 | `app/Enums/` | `UserType` (`admin`, `user`), `ProductStatus` (`active`, `draft`, `archived`) and `StockLevel` (the `in`, `low` and `out` values of the product list's `stock` filter). |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
@@ -253,10 +253,11 @@ Details and operational advice are in [SECURITY.md](SECURITY.md).
   remember token and revokes every OAuth access and refresh token of the
   account (`User::booted()`). Because of `authenticateSessions()` in
   `bootstrap/app.php`, browser sessions that signed in with the old password
-  are signed out when they next load a page. Deleting an account also
-  revokes its tokens. The
-  forgot-password form answers the same way whether or not the email
-  exists.
+  are signed out when they next load a page. The session that changed its
+  own password on the Profile page stays signed in under a new session id:
+  `KeepSessionAfterPasswordChange` stores the new password hash in it.
+  Deleting an account also revokes its tokens. The forgot-password form
+  answers the same way whether or not the email exists.
 - **Uploads.** `POST /api/product/upload` accepts JPEG, PNG and WebP images
   up to 5 MB and 4096x4096 pixels. `ImageReencoder` decodes the image and
   stores a re-encoded copy, which drops metadata and hidden data. Files get

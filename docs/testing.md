@@ -107,9 +107,7 @@ Two limits matter if you add tests. The app allows 10 login attempts per
 minute per IP address, so wait a minute before starting a second full run.
 The API allows 60 requests per minute per account, so the tests reuse saved
 sessions and spread their requests over two administrator accounts and one
-regular user. One test is marked with `test.fail()` on purpose: it shows a
-known bug (changing your own password also signs out the current session)
-and will start failing, as an unexpected pass, once the bug is fixed.
+regular user.
 
 In CI, `.github/workflows/e2e.yml` runs the same scripts and uploads the
 report as the `playwright-report` artifact. The workflow is opt-in: add the

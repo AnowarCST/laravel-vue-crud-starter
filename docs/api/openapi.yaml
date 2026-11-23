@@ -174,7 +174,9 @@ paths:
         On success, every OAuth access token and refresh token of the account
         is revoked, including the bearer token used for this request. Browser
         sessions that signed in with the old password are signed out the next
-        time they load a page (Laravel's `AuthenticateSession` middleware).
+        time they load a page (Laravel's `AuthenticateSession` middleware),
+        except the browser session that sent this request with the
+        `laravel_token` cookie: it stays signed in under a new session id.
       requestBody:
         required: true
         content:

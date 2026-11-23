@@ -55,7 +55,7 @@ tests/e2e/setup/stop-stack.sh                        # remove containers, volume
 ## Known bugs and `test.fail()`
 
 A known bug may be kept visible with `test.fail(true, 'Known bug: ...')`
-and a comment that explains it, as in `profile.spec.js`. Playwright then
+and a comment that explains it. Playwright then
 reports an unexpected pass once the bug is fixed; remove the marker in the
 pull request that fixes it. Never use `test.fail()`, `test.skip()` or
 `test.fixme()` to hide a failure you introduced, and never commit

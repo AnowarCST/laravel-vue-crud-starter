@@ -72,7 +72,8 @@ reported to those projects directly.
   address, an administrator can correct it on the Users page, and the user can
   then request a new verification link.
 - Changing a password revokes the user's OAuth access and refresh tokens and
-  signs out their other browser sessions.
+  signs out their other browser sessions. The browser that changed its own
+  password on the Profile page stays signed in, under a new session id.
 
 ### File uploads
 

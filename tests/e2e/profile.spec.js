@@ -77,16 +77,10 @@ test('changing the password requires the current password', async ({ browser, pa
     });
 });
 
-// Known bug, kept visible on purpose. SECURITY.md and bootstrap/app.php say a
-// password change signs out the account's *other* sessions. In practice the
-// session that made the change is signed out too: the change goes through the
-// API guard, so the web session keeps the old password hash, and Laravel's
-// AuthenticateSession middleware logs it out on the next page load.
-// When this is fixed, the test passes, Playwright reports an unexpected pass,
-// and the test.fail() line should be removed.
+// The change goes through the API, but the browser session that made it must
+// stay signed in (App\Http\Middleware\KeepSessionAfterPasswordChange); the
+// account's other sessions are signed out on their next page load.
 test('changing the password keeps the current session signed in', async ({ browser, page }) => {
-    test.fail(true, 'Known bug: changing your own password signs out the current session as well');
-
     const account = await createAccount(browser);
     await login(page, account);
     await expect(page).toHaveURL(/\/dashboard$/);

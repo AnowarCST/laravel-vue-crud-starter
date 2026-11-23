@@ -18,10 +18,5 @@ covered by tests or checks, and passing in CI.
 
 ## Known follow-ups
 
-- Changing your own password on the Profile page also signs out the current
-  browser session, although `SECURITY.md` says only the other sessions are
-  signed out. `tests/e2e/profile.spec.js` marks this with `test.fail()`; a
-  later pull request will fix it and remove the marker.
-
 - Passport's JSON API (used by the Developer page) is deprecated in Passport
   13. It still works, but a future Passport release may remove it.

@@ -124,8 +124,7 @@ change one:
   JavaScript error (`tests/e2e/support/test.js`). Fix the cause; do not
   remove the check.
 - A known bug can be kept visible with `test.fail()` and a comment that
-  explains it, as in `tests/e2e/profile.spec.js`. Remove the marker in the
-  pull request that fixes the bug.
+  explains it. Remove the marker in the pull request that fixes the bug.
 
 Do not lower the Larastan level, add a baseline, or disable lint rules to
 make a check pass. Fix the code instead, or explain in the pull request why
