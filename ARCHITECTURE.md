@@ -55,9 +55,40 @@ flowchart LR
 - The shell passes the signed-in user (`id`, `name`, `email`, `type`) to Vue
   in the `data-user` attribute of `#spa-app`. There are no inline scripts.
   `resources/js/lib/user.js` reads the attribute.
-- `resources/js/app.js` creates the Vue app and Vue Router with the routes in
-  `resources/js/routes.js`. `resources/js/auth.js` is a second Vite entry with
-  styles and Bootstrap behaviour for the server-rendered guest pages.
+- Vite builds three entries (`vite.config.js`):
+  - `resources/js/app.js` creates the Vue app and Vue Router with the routes
+    in `resources/js/routes.js`;
+  - `resources/js/auth.js` has the styles and Bootstrap behaviour for the
+    server-rendered guest pages;
+  - `resources/js/api-docs.js` is the Swagger UI viewer for `/docs` (see
+    [API documentation](#api-documentation)).
+- The logo is `public/images/logo.svg`, shown in the sidebar and on the
+  sign-in pages, with `public/favicon.svg`, `public/favicon.ico` and
+  `public/apple-touch-icon.png` as icons. Their source is
+  `resources/images/brand/logo.svg`; see
+  [resources/images/README.md](resources/images/README.md).
+
+### Product catalogue
+
+- The products page (`resources/js/components/product/ProductsPage.vue`)
+  shows each product's photo, SKU, category, tags, stock, status and price.
+  Its search, filters (category, tag, status and stock level) and sort order
+  are kept in the URL query string, so a reload or a shared link shows the
+  same list. It sends them to `GET /api/product`.
+- `ProductIndexRequest` validates those query parameters. Unknown values are
+  rejected with `422`, so only allowed sort columns and bound values reach
+  the database query. `ProductController::index()` applies them.
+- A product is "low stock" with 1 to `Product::LOW_STOCK_THRESHOLD` (5) units
+  and "out of stock" with 0. `GET /api/product/stats` returns the counts the
+  dashboard shows (by status, low stock and out of stock).
+  `resources/js/lib/products.js` holds the same statuses, stock levels,
+  sort options and threshold for the dashboard and the products page.
+- `ProductRequest` stores SKUs trimmed and in upper case. A SKU is required
+  when creating a product and must be unique.
+- The optional demo data (`php artisan db:seed`) is an everyday retail
+  catalogue of 6 categories, 8 tags and 14 products. The product images are
+  in `public/images/products/`, and their SVG sources in
+  `resources/images/products/`.
 
 ### The SPA calling the API
 
@@ -94,7 +125,9 @@ flowchart LR
   `EmailVerificationTest` checks this for every API route.
 - Successful responses use `BaseController::sendResponse()`, which returns
   `{"success": true, "data": ..., "message": "..."}`. List endpoints put a
-  Laravel paginator (10 per page) in `data`.
+  Laravel paginator (10 per page) in `data`. `GET /api/product` also accepts
+  `per_page` (up to 50) and the search, filter and sort parameters described
+  in [Product catalogue](#product-catalogue).
 - `bootstrap/app.php` renders exceptions as JSON for `api/*` and for requests
   that expect JSON. When `APP_DEBUG` is false, 404 bodies are
   `{"message": "Not Found."}` so they do not name model classes.
@@ -124,7 +157,7 @@ flowchart LR
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
 | `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
-| `app/Http/Requests/` | Form Requests: `Products/ProductRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
+| `app/Http/Requests/` | Form Requests: `Products/ProductRequest`, `Products/ProductIndexRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
 | `app/Policies/` | One policy per model, found by Laravel's naming convention. |
 | `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate. |
@@ -132,14 +165,18 @@ flowchart LR
 | `app/Support/ImageReencoder.php` | Decodes and re-encodes uploaded images with GD. |
 | `bootstrap/app.php` | Routing, middleware and exception handling setup. |
 | `config/` | Laravel configuration, including `api-docs.php`, `cors.php` and `passport.php`. |
-| `database/migrations/`, `database/factories/`, `database/seeders/` | Schema, test factories and optional demo data (no user accounts). |
+| `database/migrations/`, `database/factories/`, `database/seeders/` | Schema, test factories and optional demo data (the product catalogue; no user accounts). |
 | `docs/api/openapi.yaml` | OpenAPI 3.1 description of `/api`. |
 | `docker/` | `Dockerfile` (targets `dev`, `node-dev`, `prod`), Apache and PHP configuration, entrypoints. |
+| `public/images/`, `public/favicon.*`, `public/apple-touch-icon.png` | Logo, icons and demo product images. |
+| `resources/images/` | SVG sources of the logo and the demo product images, and `render.mjs`, which renders the product images. |
 | `resources/js/` | Vite entries (`app.js`, `auth.js`, `api-docs.js`), the root component `App.vue`, `routes.js`, `Gate.js`, `components/` and `lib/` helpers. |
 | `resources/views/` | Blade views: SPA shell (`home.blade.php`), guest layout (`layouts/master.blade.php`), auth pages, `api-docs.blade.php`, Passport consent page. |
 | `routes/web.php`, `routes/api.php` | Web and API routes. |
 | `tests/Feature/`, `tests/Unit/` | PHPUnit tests. They use an in-memory SQLite database. |
-| `.github/` | CI, CodeQL and Dependabot configuration. |
+| `tests/e2e/` | Playwright end-to-end tests, and the scripts and Compose file for the throwaway stack they run against (`setup/`, `compose.yaml`). |
+| `.zap/rules.tsv` | Rules for the OWASP ZAP baseline scan. |
+| `.github/` | CI, end-to-end tests, ZAP scan, CodeQL and Dependabot configuration. |
 
 ## Authorization model
 
@@ -219,7 +256,7 @@ From `database/migrations/` and `app/Models/`:
 | `users` | `id`, `name`, `type`, `email` (unique), `email_verified_at`, `password`, `remember_token`, timestamps | Model `User`. |
 | `categories` | `id`, `name`, `description`, timestamps | Model `Category`. |
 | `tags` | `id`, `name`, timestamps | Model `Tag`. |
-| `products` | `id`, `name`, `description`, `price` (string), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). Appends `photo_url`. |
+| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. Appends `photo_url`. `sku` is empty only for products created before SKUs existed. |
 | `product_tag` | `product_id`, `tag_id` | Pivot table for products and tags. |
 | `password_resets` | `email`, `token`, `created_at` | Password reset tokens (`config/auth.php`). |
 | `oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes` | | Laravel Passport. Client ids are UUIDs unless `PASSPORT_CLIENT_UUIDS=false`. |
@@ -265,6 +302,17 @@ on 8080, serves only `public/`, and the entrypoint runs
   - **frontend**: `npm ci`, ESLint, Prettier check, `npm audit
     --audit-level=moderate` and `npm run build`.
   - **docker**: builds the `prod` target and checks that `/up` responds.
+- `.github/workflows/e2e.yml`, on pushes to `main`, on pull requests and on
+  demand: builds the `prod` image, starts the end-to-end stack with
+  `tests/e2e/setup/start-stack.sh` (the `prod` image, MySQL and Mailpit) and
+  runs the Playwright tests in Chromium with `tests/e2e/setup/run-tests.sh`.
+  The HTML report and traces are uploaded as the `playwright-report`
+  artifact.
+- `.github/workflows/zap.yml`, weekly, on demand and on pull requests to
+  `main` that change code or configuration that shapes HTTP responses:
+  starts the same stack and runs an OWASP ZAP baseline scan of the
+  signed-out pages. Only the rules set to `FAIL` in `.zap/rules.tsv` fail the
+  job; the report is uploaded as the `zap-baseline-report` artifact.
 - `.github/workflows/codeql.yml`: CodeQL for JavaScript/TypeScript and GitHub
   Actions on pull requests, pushes to `main` and weekly.
 - `.github/dependabot.yml`: weekly update pull requests for Composer, npm,

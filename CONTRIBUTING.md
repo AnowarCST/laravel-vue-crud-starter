@@ -36,6 +36,9 @@ Useful to know:
   <http://localhost:8025>.
 - In the local environment the API documentation is at
   <http://localhost:8000/docs>.
+- The optional demo catalogue (`docker compose exec app php artisan db:seed`)
+  gives the products page and the dashboard something to show. Tests must
+  not depend on it.
 
 ## Branches and commits
 
@@ -50,12 +53,13 @@ Useful to know:
   <body: what changed and why>
   ```
 
-  Types in use: `feat`, `fix`, `refactor`, `docs` and `chore` (use `test`
-  for changes that only touch tests). Scopes in use include `backend`,
-  `frontend`, `docker`, `dev`, `api` and `security`. Examples from the
-  history:
+  Types in use: `feat`, `fix`, `refactor`, `docs`, `test` (changes that
+  only touch tests), `ci` (workflows) and `chore`. Scopes in use include
+  `backend`, `frontend`, `products`, `branding`, `docker`, `dev`, `api`,
+  `e2e` and `security`. Examples from the history:
   `feat(frontend): migrate to Vite, Vue 3.5, Vue Router 5 and AdminLTE 4`,
-  `fix(dev): allow the Laravel origin in the Vite dev server CORS settings`.
+  `fix(dev): allow the Laravel origin in the Vite dev server CORS settings`,
+  `test(e2e): add a Playwright suite for the main user flows`.
 - Keep each commit focused on one logical change. Use the body to explain why
   the change is needed, not only what it does.
 - If a change breaks existing installations (configuration, database,
@@ -67,7 +71,11 @@ Useful to know:
 ## Quality checks
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request. Run
-them locally before you push.
+them locally before you push. Two more workflows run on pull requests: the
+end-to-end tests (`.github/workflows/e2e.yml`, every pull request) and the
+OWASP ZAP baseline scan (`.github/workflows/zap.yml`, pull requests to `main`
+that change code or configuration that shapes HTTP responses). See the
+README sections "End-to-end tests" and "Security scan (ZAP)".
 
 | Check | Command | Fix automatically |
 | --- | --- | --- |
@@ -87,6 +95,32 @@ with [Redocly CLI](https://redocly.com/docs/cli/). It must report no errors:
 docker run --rm -e REDOCLY_TELEMETRY=off -v "$PWD/docs/api":/spec:ro -w /spec \
   redocly/cli:2.82.0 lint openapi.yaml
 ```
+
+### End-to-end tests
+
+The Playwright tests in `tests/e2e/` drive the real application in Chromium.
+README.md ("End-to-end tests") explains how to run them. When you write or
+change one:
+
+- Make every test create the records it needs (through the API, with the
+  `createCategory` and `createProduct` helpers in
+  `tests/e2e/support/helpers.js`, or through the UI) and give them unique
+  names with `uniqueSuffix()`. The stack loads the demo catalogue, and other
+  tests add records too, so never assume what the database contains. To
+  check a count, read it first and expect it to change by the number of
+  records the test created.
+- Reuse the saved sessions (`test.use({ storageState: storageState.user })`)
+  instead of signing in through the form. Logins are limited to 10 per
+  minute per IP address.
+- The API allows 60 requests per minute per account. Use the `user` account
+  when a regular user is allowed to do what the test does, and `admin2` to
+  spread administrator requests.
+- Every test fails on a Content-Security-Policy violation or an uncaught
+  JavaScript error (`tests/e2e/support/test.js`). Fix the cause; do not
+  remove the check.
+- A known bug can be kept visible with `test.fail()` and a comment that
+  explains it, as in `tests/e2e/profile.spec.js`. Remove the marker in the
+  pull request that fixes the bug.
 
 Do not lower the Larastan level, add a baseline, or disable lint rules to
 make a check pass. Fix the code instead, or explain in the pull request why
@@ -165,6 +199,11 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    `EmailVerificationTest` already checks that unverified accounts get `403`
    on every API route.
 
+9. **End-to-end test.** Add `tests/e2e/widgets.spec.js` that creates, edits
+   and deletes a widget through the page, following
+   `tests/e2e/catalogue.spec.js`. If the page is new, also add its path to
+   the list in `tests/e2e/security.spec.js`.
+
 ## Pull request checklist
 
 - [ ] The pull request explains what changed and why, and links the issue.
@@ -175,6 +214,8 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
       pull request explains why one cannot be fixed yet.
 - [ ] New or changed behaviour has tests, including authorization and
       validation failures.
+- [ ] Changes to pages are covered by the end-to-end tests, and the E2E
+      workflow passes.
 - [ ] New or changed `/api` routes are documented in
       `docs/api/openapi.yaml`, and Redocly CLI reports no errors.
 - [ ] No inline scripts, inline event handlers or third-party CDNs were
