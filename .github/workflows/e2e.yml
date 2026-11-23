@@ -1,0 +1,91 @@
+name: E2E
+
+# Playwright end-to-end tests against the production Docker image, MySQL and
+# Mailpit, started with the same scripts developers use locally
+# (tests/e2e/setup/*.sh, see README.md "End-to-end tests").
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "26"
+  E2E_PROJECT: lvcs-e2e
+  E2E_IMAGE: lvcs-e2e:ci
+
+jobs:
+  e2e:
+    name: Playwright (Chromium)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # The tests run in the official Playwright image, which reads
+      # @playwright/test from this checkout's node_modules.
+      - name: Install dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build prod image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: prod
+          push: false
+          load: true
+          tags: ${{ env.E2E_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start the E2E stack
+        run: tests/e2e/setup/start-stack.sh
+        env:
+          E2E_SKIP_BUILD: "1"
+
+      - name: Run Playwright tests
+        run: tests/e2e/setup/run-tests.sh
+
+      - name: Show container logs
+        if: failure()
+        run: |
+          docker compose -p "$E2E_PROJECT" -f tests/e2e/compose.yaml --env-file tests/e2e/.stack/stack.env \
+            logs --no-color --tail 200 app db mailpit
+
+      # The report and traces contain the random, single-use passwords of
+      # this run's test accounts, which stop existing when the job ends.
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            tests/e2e/playwright-report/
+            tests/e2e/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Stop the E2E stack
+        if: always()
+        run: tests/e2e/setup/stop-stack.sh
