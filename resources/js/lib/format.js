@@ -1,5 +1,4 @@
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const currencyFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
 
 function toDate(value) {
@@ -11,11 +10,6 @@ function toDate(value) {
 export function formatDate(value) {
     const date = toDate(value);
     return date ? dateFormatter.format(date) : '—';
-}
-
-export function formatDateTime(value) {
-    const date = toDate(value);
-    return date ? dateTimeFormatter.format(date) : '—';
 }
 
 export function formatCurrency(value) {

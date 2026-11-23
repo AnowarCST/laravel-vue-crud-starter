@@ -12,9 +12,12 @@ export class Form {
         this.busy = false;
         this.errors = {
             fields: {},
-            has(field) { return Boolean(this.fields[field]); },
-            get(field) { return this.fields[field]?.[0] || ''; },
-            any() { return Object.keys(this.fields).length > 0; },
+            has(field) {
+                return Boolean(this.fields[field]);
+            },
+            get(field) {
+                return this.fields[field]?.[0] || '';
+            },
             clear(field) {
                 if (field) delete this.fields[field];
                 else this.fields = {};
@@ -23,7 +26,7 @@ export class Form {
     }
 
     data() {
-        return Object.fromEntries(Object.keys(this.defaults).map(key => [key, this[key]]));
+        return Object.fromEntries(Object.keys(this.defaults).map((key) => [key, this[key]]));
     }
 
     fill(values = {}) {
@@ -54,9 +57,10 @@ export class Form {
         }
     }
 
-    post(url, data) { return this.submit('post', url, data); }
-    put(url, data) { return this.submit('put', url, data); }
-    delete(url) { return this.submit('delete', url, undefined); }
+    post(url, data) {
+        return this.submit('post', url, data);
+    }
+    put(url, data) {
+        return this.submit('put', url, data);
+    }
 }
-
-export default Form;

@@ -4,18 +4,12 @@ import { reactive } from 'vue';
 // thin progress bar in App.vue.
 export const progress = reactive({ pending: 0 });
 
-export const Progress = {
-    start() { progress.pending += 1; },
-    finish() { progress.pending = Math.max(0, progress.pending - 1); },
-    fail() { progress.pending = Math.max(0, progress.pending - 1); },
-};
-
 /** Wrap a promise so the progress bar is shown while it is pending. */
 export async function track(promise) {
-    Progress.start();
+    progress.pending += 1;
     try {
         return await promise;
     } finally {
-        Progress.finish();
+        progress.pending = Math.max(0, progress.pending - 1);
     }
 }

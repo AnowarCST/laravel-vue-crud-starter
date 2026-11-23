@@ -21,11 +21,9 @@ import App from './App.vue';
 import Gate from './Gate';
 import routes from './routes';
 import { currentUser } from './lib/user';
-import { Progress } from './lib/progress';
 import { formatDate } from './lib/format';
 import HasError from './components/common/HasError.vue';
-import Pagination from './components/common/Pagination.vue';
-import NotFound from './components/NotFound.vue';
+import PaginationNav from './components/common/PaginationNav.vue';
 
 // Only precompiled SFC templates are mounted (runtime-only Vue build). The
 // mount point is an empty element; server-rendered markup is never compiled.
@@ -40,11 +38,9 @@ if (root) {
 
     const app = createApp(App);
     app.config.globalProperties.$gate = new Gate(currentUser);
-    app.config.globalProperties.$Progress = Progress;
     app.config.globalProperties.formatDate = formatDate;
-    app.component('has-error', HasError);
-    app.component('pagination', Pagination);
-    app.component('not-found', NotFound);
+    app.component('HasError', HasError);
+    app.component('PaginationNav', PaginationNav);
     app.use(router);
 
     router.isReady().then(() => {
