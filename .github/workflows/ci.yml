@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: "8.5"
+  NODE_VERSION: "26"
+
+jobs:
+  php:
+    name: PHP (composer audit + tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: bcmath, gd, intl, mbstring, pcntl, pdo_mysql, pdo_sqlite, sodium, zip
+          ini-values: zend.assertions=1
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json / composer.lock
+        run: composer validate --strict
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Audit dependencies
+        run: composer audit --locked
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+          php artisan passport:keys --no-interaction
+
+      - name: Run tests
+        run: php artisan test
+
+  frontend:
+    name: Frontend (npm audit + Vite build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-fund
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
+      - name: Build assets
+        run: npm run build
+
+  docker:
+    name: Docker (prod image)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build prod target
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: prod
+          push: false
+          load: true
+          tags: laravel-vue-crud-starter:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test /up
+        run: |
+          docker run -d --name app -p 127.0.0.1:8080:8080 \
+            -e APP_KEY="base64:$(openssl rand -base64 32)" \
+            -e DB_CONNECTION=sqlite -e DB_DATABASE=/tmp/ci.sqlite \
+            -e SESSION_DRIVER=file -e CACHE_STORE=file \
+            laravel-vue-crud-starter:ci
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:8080/up; then
+              echo "healthy"; exit 0
+            fi
+            sleep 2
+          done
+          docker logs app
+          exit 1

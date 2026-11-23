@@ -1,14 +1,34 @@
+# Dependencies
 /node_modules
+/vendor
+
+# Build output (Vite) and runtime links
+/public/build
 /public/hot
 /public/storage
-/storage/*.key
-/vendor
+
+# Secrets / local environment (.env.example and .env.testing are committed:
+# .env.testing only selects the in-memory SQLite test database)
 .env
 .env.backup
+.env.production
+.env.*.local
+/storage/*.key
+/auth.json
+
+# Tooling caches and reports
+.phpunit.cache
 .phpunit.result.cache
-Homestead.json
-Homestead.yaml
+/coverage
+reports/
 npm-debug.log
 yarn-error.log
-reports/
+Homestead.json
+Homestead.yaml
+
+# Editors / OS
 .idea
+.vscode
+*.code-workspace
+.DS_Store
+Thumbs.db

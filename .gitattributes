@@ -1,5 +1,20 @@
-* text=auto
-*.css linguist-vendored
-*.scss linguist-vendored
-*.js linguist-vendored
+* text=auto eol=lf
+
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php
+
+# Shell scripts copied into Linux images must keep LF endings.
+*.sh text eol=lf
+docker/** text eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+/.github export-ignore
 CHANGELOG.md export-ignore
