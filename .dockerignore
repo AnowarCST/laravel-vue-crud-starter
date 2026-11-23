@@ -31,5 +31,6 @@ coverage
 
 docker-compose*.yml
 azure-pipelines.yml
+deploy
 CODEX_INSTRUCTIONS.md
 SECURITY_REFACTOR_PLAN.md
