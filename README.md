@@ -210,4 +210,7 @@ released under the MIT license with the rest of the code. Their sources are in
 
 ## License
 
-[MIT license](LICENSE).
+The code is released under the [MIT license](LICENSE). The built assets and
+the production image also contain third-party software under its own
+licences (for example MIT, Apache-2.0 and SIL OFL 1.1); see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
