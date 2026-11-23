@@ -281,7 +281,6 @@ From `database/migrations/` and `app/Models/`:
 | `password_resets` | `email`, `token`, `created_at` | Password reset tokens (`config/auth.php`). |
 | `oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes` | | Laravel Passport. Client ids are UUIDs unless `PASSPORT_CLIENT_UUIDS=false`. |
 | `sessions`, `cache`, `cache_locks`, `failed_jobs` | | Laravel framework tables. |
-| `roles`, `role_user`, `social_accounts` | | Not used by any code. Kept for existing installations (see [TASKS.md](TASKS.md)). |
 
 Relations defined in the models:
 

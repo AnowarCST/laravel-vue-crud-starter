@@ -23,8 +23,5 @@ covered by tests or checks, and passing in CI.
   signed out. `tests/e2e/profile.spec.js` marks this with `test.fail()`; a
   later pull request will fix it and remove the marker.
 
-- The `roles`, `role_user` and `social_accounts` tables are no longer used by
-  any code. They are kept because existing installations have already created
-  them. A later release can drop them with a new migration and a release note.
 - Passport's JSON API (used by the Developer page) is deprecated in Passport
   13. It still works, but a future Passport release may remove it.

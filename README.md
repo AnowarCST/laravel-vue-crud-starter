@@ -332,7 +332,13 @@ existing installation.
     not remove the old car demo products, categories or tags, and the old car
     photos are no longer shipped. Delete those rows in the UI if you do not
     want them.
-12. **Migrate** with `php artisan migrate --force`, then
+12. **Unused tables are dropped.** The migration
+    `2026_11_23_000004_drop_unused_role_and_social_account_tables` drops the
+    `roles`, `role_user` and `social_accounts` tables, which no code has
+    used. If you added rows to them yourself, export those rows first.
+    Rolling the migration back recreates the tables as they were defined
+    before, but empty.
+13. **Migrate** with `php artisan migrate --force`, then
     `php artisan optimize:clear`.
 
 **Rollback**: redeploy the previous image or commit, then restore the database
