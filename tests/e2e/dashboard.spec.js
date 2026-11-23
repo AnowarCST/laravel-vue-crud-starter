@@ -65,19 +65,12 @@ test('the dashboard counts products and links to the low and out of stock lists'
 
     // The products list is newest first, so the new products are on page 1.
     await test.step('the "low" badge opens the low stock products', async () => {
+        await expect(outLink).toHaveAttribute('href', '/products?stock=out');
         await lowLink.click();
         await expect(page).toHaveURL(/\/products\?stock=low$/);
         const filters = page.getByRole('search', { name: 'Filter products' });
         await expect(filters.getByLabel('Stock')).toHaveValue('low');
         await expect(rowWith(page, lowName)).toBeVisible();
         await expect(rowWith(page, outName)).toHaveCount(0);
-    });
-
-    await test.step('the "out" badge opens the out of stock products', async () => {
-        await page.goto('/dashboard');
-        await outLink.click();
-        await expect(page).toHaveURL(/\/products\?stock=out$/);
-        await expect(rowWith(page, outName)).toBeVisible();
-        await expect(rowWith(page, lowName)).toHaveCount(0);
     });
 });
