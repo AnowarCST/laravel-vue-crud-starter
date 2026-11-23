@@ -419,12 +419,12 @@ paths:
                             description: Path on the `public` disk. Send it as `photo` when creating or updating a product.
                           url:
                             type: string
-                            description: Browser URL of the stored image (under `/storage/uploads/`).
+                            description: Root-relative browser URL of the stored image (`/storage/uploads/...`), without scheme or host, so it loads from the origin that serves the page.
               example:
                 success: true
                 data:
                   path: uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
-                  url: http://localhost:8000/storage/uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
+                  url: /storage/uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
                 message: Image uploaded
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -1484,7 +1484,7 @@ components:
           description: Path of the image, either an upload on the `public` disk (for example `uploads/<random>.png`) or a bundled demo image (for example `images/products/ceramic-coffee-mug.webp`).
         photo_url:
           type: [string, 'null']
-          description: Full URL of the image (under `/storage/uploads/` for uploads, under `/images/` for demo images), or null when the product has no photo.
+          description: Root-relative URL of the image, without scheme or host (`/storage/uploads/...` for uploads, `/images/products/...` for demo images), or null when the product has no photo or the stored path is not a safe upload or demo image path.
         created_at:
           $ref: '#/components/schemas/Timestamp'
         updated_at:

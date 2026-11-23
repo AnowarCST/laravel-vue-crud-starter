@@ -14,7 +14,6 @@ use App\Http\Resources\ProductResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Product;
 use App\Support\UnreadableImageException;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -115,7 +114,7 @@ class ProductController extends Controller
 
         return ApiResponse::success([
             'path' => $path,
-            'url' => Storage::disk('public')->url($path),
+            'url' => Product::photoUrlFor($path),
         ], 'Image uploaded');
     }
 }

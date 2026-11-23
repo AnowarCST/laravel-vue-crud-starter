@@ -80,9 +80,10 @@ services:
 
   # Playwright with Chromium, sharing the app container's network namespace:
   # inside it the app is http://localhost:8080 and Mailpit is http://mailpit:8025.
-  # The browser address must equal APP_URL, because the app builds product
-  # photo URLs from APP_URL and the CSP only allows images from 'self'. That is
-  # why run-tests.sh requires E2E_APP_PORT=8080. Started by run-tests.sh only.
+  # The browser address must equal APP_URL, because the app builds the links
+  # in emails (the verification link that registration.spec.js opens) from
+  # APP_URL, and the session cookie only belongs to that address. That is why
+  # run-tests.sh requires E2E_APP_PORT=8080. Started by run-tests.sh only.
   playwright:
     image: mcr.microsoft.com/playwright:v1.65.0-noble
     profiles: [runner]

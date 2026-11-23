@@ -43,7 +43,7 @@ class SeederTest extends TestCase
             $this->assertMatchesRegularExpression('~^images/products/[a-z0-9-]+\.webp$~', $product->photo);
             $this->assertFileExists(public_path($product->photo));
             $this->assertLessThan(60 * 1024, (int) filesize(public_path($product->photo)), $product->photo);
-            $this->assertSame('http://localhost/'.$product->photo, $product->photo_url);
+            $this->assertSame('/'.$product->photo, $product->photo_url);
         }
 
         $this->assertSame(1, Product::query()->outOfStock()->count());

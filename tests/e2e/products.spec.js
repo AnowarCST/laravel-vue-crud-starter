@@ -57,7 +57,7 @@ test('an administrator can create, edit and delete a product with a category, ta
             buffer: makePng(64, 48),
         });
         const preview = dialog.getByRole('img', { name: 'Product photo preview' });
-        await expect(preview).toHaveAttribute('src', /\/storage\/uploads\/[A-Za-z0-9]+\.png$/);
+        await expect(preview).toHaveAttribute('src', /^\/storage\/uploads\/[A-Za-z0-9]+\.png$/);
 
         await dialog.getByRole('button', { name: 'Create' }).click();
         await expectToast(page, 'Product Created Successfully');
@@ -76,7 +76,7 @@ test('an administrator can create, edit and delete a product with a category, ta
         for (const tag of tags) await expect(cell(row(), 'tags')).toContainText(tag);
 
         const photo = row().locator('img.product-thumb');
-        await expect(photo).toHaveAttribute('src', /\/storage\/uploads\/[A-Za-z0-9]+\.png$/);
+        await expect(photo).toHaveAttribute('src', /^\/storage\/uploads\/[A-Za-z0-9]+\.png$/);
         await expect.poll(() => photo.evaluate((img) => img.complete && img.naturalWidth)).toBe(64);
 
         // The stored file is the server's re-encoded copy, served as an image.

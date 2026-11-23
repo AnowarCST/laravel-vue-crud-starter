@@ -150,7 +150,26 @@ class UploadSecurityTest extends TestCase
         ]), 'data.path');
         $created = $this->postJson('/api/product', $base + ['photo' => $path])->assertOk()
             ->assertJsonPath('data.photo', $path);
-        $this->assertStringEndsWith('/storage/'.$path, $this->jsonString($created, 'data.photo_url'));
+        $this->assertSame('/storage/'.$path, $this->jsonString($created, 'data.photo_url'));
+    }
+
+    /**
+     * Images are served from the origin that served the page (CSP img-src
+     * 'self'), so their URLs must not depend on APP_URL.
+     */
+    public function test_photo_urls_are_root_relative_whatever_app_url_says(): void
+    {
+        config(['app.url' => 'https://other.example', 'filesystems.disks.public.url' => 'https://other.example/storage']);
+        Storage::forgetDisk('public');
+        $product = Product::factory()->create(['photo' => 'images/products/coffee-mug.webp']);
+
+        $upload = $this->postJson('/api/product/upload', [
+            'file' => UploadedFile::fake()->createWithContent('a.png', self::png()),
+        ])->assertOk();
+        $this->assertSame('/storage/'.$this->jsonString($upload, 'data.path'), $this->jsonString($upload, 'data.url'));
+
+        $this->getJson('/api/product/'.$product->id)->assertOk()
+            ->assertJsonPath('data.photo_url', '/images/products/coffee-mug.webp');
     }
 
     public function test_seeded_photo_may_be_resubmitted_unchanged_and_replaced_uploads_are_removed(): void
@@ -159,7 +178,7 @@ class UploadSecurityTest extends TestCase
         $base = ['name' => 'P', 'description' => 'D', 'price' => '1', 'category_id' => $product->category_id];
 
         $this->putJson('/api/product/'.$product->id, $base + ['photo' => 'images/products/wireless-mouse.webp'])->assertOk()
-            ->assertJsonPath('data.photo_url', 'http://localhost/images/products/wireless-mouse.webp');
+            ->assertJsonPath('data.photo_url', '/images/products/wireless-mouse.webp');
         foreach (['images/products/yoga-mat.webp', 'images/products/../../.env', 'images/products/wireless-mouse.webp/'] as $other) {
             $this->putJson('/api/product/'.$product->id, $base + ['photo' => $other])
                 ->assertUnprocessable()->assertJsonValidationErrors('photo');
@@ -183,7 +202,7 @@ class UploadSecurityTest extends TestCase
      */
     public static function photoUrls(): iterable
     {
-        yield 'seeded image' => ['images/products/coffee-mug.webp', 'http://localhost/images/products/coffee-mug.webp'];
+        yield 'seeded image' => ['images/products/coffee-mug.webp', '/images/products/coffee-mug.webp'];
         yield 'upload' => ['uploads/'.str_repeat('a', 40).'.png', '/storage/uploads/'.str_repeat('a', 40).'.png'];
         yield 'traversal from images' => ['images/../.env', null];
         yield 'traversal from uploads' => ['uploads/../../.env', null];
@@ -203,8 +222,7 @@ class UploadSecurityTest extends TestCase
         if ($expected === null) {
             $this->assertNull($url, $photo);
         } else {
-            $this->assertIsString($url);
-            $this->assertStringEndsWith($expected, $url);
+            $this->assertSame($expected, $url);
         }
     }
 }

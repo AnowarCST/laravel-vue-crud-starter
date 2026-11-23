@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
 
 #[UsePolicy(ProductPolicy::class)]
 class Product extends Model
@@ -138,27 +137,31 @@ class Product extends Model
     }
 
     /**
-     * Browser URL for the photo: uploads live on the "public" disk
-     * (/storage/uploads/..., requires `php artisan storage:link`); seeded
-     * demo photos are static files under public/images (for example
-     * images/products/coffee-mug.webp). Any other value, such as an external
-     * URL or a path containing "..", has no URL.
+     * Root-relative browser URL for a photo path: uploads live on the
+     * "public" disk (/storage/uploads/..., requires `php artisan
+     * storage:link`); seeded demo photos are static files under public/images
+     * (/images/products/coffee-mug.webp). Any other value, such as an
+     * external URL or a path containing "..", has no URL.
      *
+     * The URL has no scheme or host, so the browser loads the image from the
+     * origin that served the page, which the CSP (img-src 'self') allows even
+     * when that origin differs from APP_URL.
+     */
+    public static function photoUrlFor(mixed $photo): ?string
+    {
+        if (! is_string($photo) || str_contains($photo, '..')
+            || ! preg_match('~^(uploads|images)/[A-Za-z0-9_./-]+$~', $photo)) {
+            return null;
+        }
+
+        return str_starts_with($photo, 'uploads/') ? '/storage/'.$photo : '/'.$photo;
+    }
+
+    /**
      * @return Attribute<string|null, never>
      */
     protected function photoUrl(): Attribute
     {
-        return Attribute::get(function (): ?string {
-            $photo = $this->photo;
-
-            if (! is_string($photo) || str_contains($photo, '..')
-                || ! preg_match('~^(uploads|images)/[A-Za-z0-9_./-]+$~', $photo)) {
-                return null;
-            }
-
-            return str_starts_with($photo, 'uploads/')
-                ? Storage::disk('public')->url($photo)
-                : asset($photo);
-        });
+        return Attribute::get(fn (): ?string => self::photoUrlFor($this->photo));
     }
 }

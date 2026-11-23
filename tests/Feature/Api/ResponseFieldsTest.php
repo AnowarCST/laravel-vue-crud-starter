@@ -145,9 +145,12 @@ class ResponseFieldsTest extends TestCase
         $id = $this->jsonInt($this->postJson('/api/product', [...$payload, 'sku' => 'LAMP-1', 'tags' => [['text' => 'New']]])
             ->assertOk()->assertExactJsonStructure(self::envelope($created)), 'data.id');
 
-        $path = $this->jsonString($this->postJson('/api/product/upload', [
+        $upload = $this->postJson('/api/product/upload', [
             'file' => UploadedFile::fake()->createWithContent('a.png', ImageFixtures::png(ImageFixtures::opaque(1, 1))),
-        ])->assertOk()->assertExactJsonStructure(self::envelope(['path', 'url'])), 'data.path');
+        ])->assertOk()->assertExactJsonStructure(self::envelope(['path', 'url']));
+        $path = $this->jsonString($upload, 'data.path');
+        // Root-relative, so the image loads from the page's own origin.
+        $upload->assertJsonPath('data.url', '/storage/'.$path);
         $this->postJson('/api/product', [...$payload, 'sku' => 'LAMP-2', 'photo' => $path])
             ->assertOk()->assertExactJsonStructure(self::envelope([...$created, 'photo']));
 

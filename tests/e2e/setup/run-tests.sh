@@ -27,8 +27,9 @@ set -a
 set +a
 
 # Inside the runner the app is reached on its container port, 8080. APP_URL
-# must be the same address (product photo URLs are built from it), so the
-# stack has to publish the app on host port 8080 as well.
+# must be the same address (the links in emails, such as the verification
+# link, are built from it), so the stack has to publish the app on host port
+# 8080 as well.
 if [ "$E2E_APP_PORT" != "8080" ]; then
     echo "The Docker runner needs the stack started with E2E_APP_PORT=8080 (it is $E2E_APP_PORT)." >&2
     echo "With another port, run Playwright on the host instead: npx playwright install chromium && npm run test:e2e" >&2
