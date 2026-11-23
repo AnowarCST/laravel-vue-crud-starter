@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="48x48">
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <title>{{ config('app.name', 'Laravel') }}</title>
     @vite('resources/js/auth.js')
 </head>
@@ -11,7 +14,7 @@
     <nav class="navbar navbar-expand bg-body border-bottom">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url('/') }}">
-                <img src="{{ asset('images/logo.png') }}" alt="" class="auth-logo-image">
+                <img src="{{ asset('images/logo.svg') }}" alt="" class="auth-logo-image" width="48" height="48">
                 <span>{{ config('app.name', 'Laravel') }}</span>
             </a>
             @if (Route::has('login'))
