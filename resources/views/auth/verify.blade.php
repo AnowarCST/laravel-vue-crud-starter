@@ -17,8 +17,14 @@
                 </div>
             @endif
 
+            @if (auth()->user()?->email)
+                <p>
+                    {{ __('We sent a verification link to') }}
+                    <strong class="text-break">{{ auth()->user()->email }}</strong>.
+                </p>
+            @endif
             <p>{{ __('Before proceeding, please check your email for a verification link.') }}</p>
-            <p>{{ __('If you did not receive the email') }}:</p>
+            <p>{{ __('If you did not receive the email, you can request another one.') }}</p>
 
             <form method="POST" action="{{ route('verification.resend') }}" class="d-grid mb-3">
                 @csrf

@@ -48,12 +48,12 @@ class AuthorizationSecurityTest extends TestCase
 
         $this->actingAs($admin, 'api')->putJson('/api/user/'.$admin->id, ['type' => 'user'])
             ->assertUnprocessable()->assertJsonValidationErrors('type');
-        $this->assertSame('admin', $admin->fresh()->type);
+        $this->assertSame('admin', $admin->refresh()->type);
 
         $this->putJson('/api/user/'.$admin->id, ['type' => 'admin', 'name' => 'Still admin'])->assertOk();
 
         $this->putJson('/api/user/'.$user->id, ['type' => 'admin'])->assertOk();
-        $this->assertSame('admin', $user->fresh()->type);
+        $this->assertSame('admin', $user->refresh()->type);
 
         $this->putJson('/api/user/'.$user->id, ['type' => 'superuser'])
             ->assertUnprocessable()->assertJsonValidationErrors('type');
@@ -72,7 +72,7 @@ class AuthorizationSecurityTest extends TestCase
             'password' => 'Puppet-password-123!', 'type' => 'admin',
         ])->assertForbidden();
 
-        $this->assertSame('user', $user->fresh()->type);
+        $this->assertSame('user', $user->refresh()->type);
         $this->assertDatabaseMissing('users', ['email' => 'puppet@example.com']);
     }
 
@@ -83,7 +83,7 @@ class AuthorizationSecurityTest extends TestCase
             'password' => 'Mass-assign-123!', 'type' => 'admin',
         ]);
 
-        $this->assertNull($user->type);
+        $this->assertArrayNotHasKey('type', $user->getAttributes());
         $this->assertSame(['name', 'email', 'password'], $user->getFillable());
         foreach ([Category::class, Tag::class, Product::class] as $model) {
             $this->assertNotEmpty((new $model)->getFillable(), $model.' must declare $fillable');

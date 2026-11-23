@@ -1,9 +1,10 @@
 import Swal from 'sweetalert2';
+import { UNVERIFIED_EMAIL_MESSAGE } from '../bootstrap';
 
 // NOTE: SweetAlert2 renders `title`/`html` as HTML. Any text that may contain
 // server or user supplied content must go through `titleText`/`text`, which
 // are assigned as textContent.
-export const Toast = Swal.mixin({
+const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
     showConfirmButton: false,
@@ -23,10 +24,19 @@ export function toastError(message) {
 export function errorMessage(error, fallback = 'Something went wrong. Please try again.') {
     const status = error?.response?.status;
     if (status === 422) return error.response.data?.message || 'Please correct the highlighted fields.';
-    if (status === 403) return 'You are not allowed to perform this action.';
+    if (status === 403) {
+        return error.response.data?.message === UNVERIFIED_EMAIL_MESSAGE
+            ? UNVERIFIED_EMAIL_MESSAGE
+            : 'You are not allowed to perform this action.';
+    }
     if (status === 404) return 'The requested record was not found.';
     if (status === 429) return 'Too many requests. Please wait a moment and try again.';
     return error?.response?.data?.message || fallback;
+}
+
+/** Blocking information dialog; resolves once the user dismisses it. */
+export function showNotice(title, message) {
+    return Swal.fire({ icon: 'info', titleText: String(title), text: String(message), confirmButtonText: 'OK' });
 }
 
 export async function confirmDelete(what = 'this record') {
@@ -41,5 +51,3 @@ export async function confirmDelete(what = 'this record') {
     });
     return result.isConfirmed;
 }
-
-export { Swal };

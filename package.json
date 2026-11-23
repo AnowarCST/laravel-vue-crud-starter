@@ -9,6 +9,10 @@
     "dev": "vite",
     "build": "vite build",
     "production": "vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write resources/js resources/css vite.config.js eslint.config.js",
+    "format:check": "prettier --check resources/js resources/css vite.config.js eslint.config.js",
     "audit:security": "npm audit --audit-level=moderate"
   },
   "dependencies": {
@@ -23,8 +27,15 @@
     "vue-router": "^5.5.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.11",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.12.1",
+    "globals": "^17.14.0",
     "laravel-vite-plugin": "^3.2.1",
-    "vite": "^8.3.8"
+    "prettier": "^3.10.1",
+    "vite": "^8.3.8",
+    "vue-eslint-parser": "^10.4.2"
   }
 }

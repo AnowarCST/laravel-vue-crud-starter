@@ -11,9 +11,16 @@
 }
 
 @keyframes request-progress {
-    0% { transform: scaleX(0.1); }
-    50% { transform: scaleX(0.7); }
-    100% { transform: scaleX(1); opacity: 0.4; }
+    0% {
+        transform: scaleX(0.1);
+    }
+    50% {
+        transform: scaleX(0.7);
+    }
+    100% {
+        transform: scaleX(1);
+        opacity: 0.4;
+    }
 }
 
 /* Initials avatar (no external Gravatar requests; CSP img-src 'self'). */
@@ -27,11 +34,24 @@
     background-color: var(--bs-primary-bg-subtle);
     text-transform: uppercase;
 }
-.user-avatar-sm { width: 2rem; height: 2rem; font-size: .8rem; }
-.user-avatar-lg { width: 5.5rem; height: 5.5rem; font-size: 2rem; }
-.user-header .user-avatar { display: flex; border: 3px solid rgba(255, 255, 255, .3); }
+.user-avatar-sm {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.8rem;
+}
+.user-avatar-lg {
+    width: 5.5rem;
+    height: 5.5rem;
+    font-size: 2rem;
+}
+.user-header .user-avatar {
+    display: flex;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
 
-.brand-link .brand-image { max-height: 33px; }
+.brand-link .brand-image {
+    max-height: 33px;
+}
 
 .product-thumb {
     width: 48px;
@@ -49,11 +69,15 @@
     border: 1px solid var(--bs-border-color);
 }
 
-.tag-remove { font-size: .55rem; }
+.tag-remove {
+    font-size: 0.55rem;
+}
 
 .secret-value {
     word-break: break-all;
     user-select: all;
 }
 
-.auth-logo-image { max-height: 48px; }
+.auth-logo-image {
+    max-height: 48px;
+}

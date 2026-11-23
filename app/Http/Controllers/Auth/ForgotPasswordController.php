@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
@@ -30,14 +31,14 @@ class ForgotPasswordController extends Controller
         $this->middleware('throttle:password-reset')->only('sendResetLinkEmail');
     }
 
-    protected function sendResetLinkResponse(Request $request, $response)
+    protected function sendResetLinkResponse(Request $request, string $response): JsonResponse|RedirectResponse
     {
         return $request->wantsJson()
             ? new JsonResponse(['message' => __(self::GENERIC_STATUS)], 200)
             : back()->with('status', __(self::GENERIC_STATUS));
     }
 
-    protected function sendResetLinkFailedResponse(Request $request, $response)
+    protected function sendResetLinkFailedResponse(Request $request, string $response): JsonResponse|RedirectResponse
     {
         if (in_array($response, [Password::INVALID_USER, Password::RESET_THROTTLED], true)) {
             return $this->sendResetLinkResponse($request, $response);

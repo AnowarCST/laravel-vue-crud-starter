@@ -33,6 +33,11 @@ updates:
     groups:
       docker-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # Stay on Node.js LTS releases. Odd-numbered majors are never LTS, so
+      # move to the next LTS major by hand.
+      - dependency-name: node
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: docker-compose
     directory: /
@@ -43,6 +48,12 @@ updates:
     groups:
       compose-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # Stay on the MySQL LTS line (9.7.x) and accept patch releases only.
+      # Newer version numbers (for example 26.x) are short-lived Innovation
+      # releases. Move to the next LTS by hand.
+      - dependency-name: mysql
+        update-types: [version-update:semver-major, version-update:semver-minor]
 
   - package-ecosystem: github-actions
     directory: /

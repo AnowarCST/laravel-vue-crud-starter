@@ -9,8 +9,8 @@ use Illuminate\Foundation\Http\FormRequest;
 class ProductRequest extends FormRequest
 {
     /**
-     * Paths produced by ProductController::upload(): UploadedFile::store()
-     * uses Str::random(40) plus the MIME-derived extension.
+     * Paths produced by ProductController::upload(): Str::random(40) plus the
+     * extension of the detected image format (see ImageReencoder::EXTENSIONS).
      */
     public const UPLOADED_PHOTO_PATTERN = '~^uploads/[A-Za-z0-9]{40}\.(jpg|jpeg|png|webp)$~';
 
@@ -20,6 +20,9 @@ class ProductRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -30,11 +33,31 @@ class ProductRequest extends FormRequest
             'tags' => ['sometimes', 'array', 'max:50'],
             'tags.*.text' => ['required', 'string', 'max:191'],
             'photo' => ['sometimes', 'nullable', 'string', 'max:191', function (string $attribute, mixed $value, Closure $fail): void {
-                if (! preg_match(self::UPLOADED_PHOTO_PATTERN, $value) && ! $this->isUnchangedPhoto($value)) {
+                // Non-string values are already rejected by the "string" rule.
+                if (is_string($value) && ! preg_match(self::UPLOADED_PHOTO_PATTERN, $value) && ! $this->isUnchangedPhoto($value)) {
                     $fail('The :attribute must be an image uploaded through /api/product/upload.');
                 }
             }],
         ];
+    }
+
+    /**
+     * Names from the validated "tags" payload, e.g. [{"text": "Sedan"}].
+     *
+     * @return list<string>
+     */
+    public function tagNames(): array
+    {
+        $tags = $this->validated('tags', []);
+        $names = [];
+
+        foreach (is_array($tags) ? $tags : [] as $tag) {
+            if (is_array($tag) && isset($tag['text']) && is_string($tag['text'])) {
+                $names[] = $tag['text'];
+            }
+        }
+
+        return $names;
     }
 
     /**

@@ -6,7 +6,8 @@ import { errorMessage } from './notify';
  * `Passport::$registersJsonApiRoutes = true`. Translate a missing endpoint
  * into a clear message instead of a broken UI.
  */
-export const UNAVAILABLE_MESSAGE = 'This Passport API is not available on this server. Use php artisan passport:client to manage OAuth clients from the command line.';
+const UNAVAILABLE_MESSAGE =
+    'This Passport API is not available on this server. Use php artisan passport:client to manage OAuth clients from the command line.';
 
 export function describePassportError(error, fallback) {
     const status = error?.response?.status;

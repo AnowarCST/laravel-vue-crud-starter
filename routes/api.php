@@ -13,13 +13,15 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Every route except "version" requires the Passport "api" guard, which
-| accepts bearer tokens and the SPA's laravel_token cookie + X-CSRF-TOKEN.
+| accepts bearer tokens and the SPA's laravel_token cookie + X-CSRF-TOKEN,
+| and a verified email address: unverified accounts receive 403 with
+| {"message": "Your email address is not verified."}.
 |
 */
 
 Route::get('version', fn () => response()->json(['version' => config('app.version')]));
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('profile', [ProfileController::class, 'profile']);
     Route::put('profile', [ProfileController::class, 'updateProfile']);
     Route::post('change-password', [ProfileController::class, 'changePassword']);

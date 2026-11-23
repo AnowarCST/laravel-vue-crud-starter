@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\ImageFixtures;
 use Tests\TestCase;
 
 class ProductSecurityTest extends TestCase
@@ -15,9 +16,7 @@ class ProductSecurityTest extends TestCase
 
     private function image(string $name = 'picture.png'): UploadedFile
     {
-        return UploadedFile::fake()->createWithContent($name, base64_decode(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg=='
-        ));
+        return UploadedFile::fake()->createWithContent($name, ImageFixtures::png(ImageFixtures::opaque(1, 1)));
     }
 
     public function test_upload_rejects_scripts_svg_and_images_with_executable_extensions(): void
@@ -42,7 +41,7 @@ class ProductSecurityTest extends TestCase
         $this->actingAs(User::factory()->create(), 'api');
         $response = $this->postJson('/api/product/upload', ['file' => $this->image()])
             ->assertOk()->assertJsonPath('success', true);
-        $path = $response->json('data.path');
+        $path = $this->jsonString($response, 'data.path');
         $this->assertMatchesRegularExpression('~^uploads/[A-Za-z0-9]{40}\.png$~', $path);
         Storage::disk('public')->assertExists($path);
         $this->assertStringNotContainsString('picture', $path);
@@ -72,7 +71,7 @@ class ProductSecurityTest extends TestCase
         ];
         $this->actingAs($user, 'api');
         $response = $this->postJson('/api/product', $data)->assertOk();
-        $id = $response->json('data.id');
+        $id = $this->jsonInt($response, 'data.id');
         $this->assertDatabaseHas('tags', ['name' => 'First']);
         $this->getJson('/api/product/'.$id)->assertOk()->assertJsonPath('data.name', 'Product');
         $this->putJson('/api/product/'.$id, [...$data, 'price' => '-1'])

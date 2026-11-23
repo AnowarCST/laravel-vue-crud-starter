@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\UsersTableSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
@@ -27,7 +28,7 @@ class RegistrationSecurityTest extends TestCase
 
     public function test_database_seeding_does_not_provision_a_known_admin(): void
     {
-        $this->seed(\Database\Seeders\UsersTableSeeder::class);
+        $this->seed(UsersTableSeeder::class);
         $this->assertDatabaseCount('users', 0);
     }
 }

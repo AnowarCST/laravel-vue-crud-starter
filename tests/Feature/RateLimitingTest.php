@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class RateLimitingTest extends TestCase
@@ -25,7 +26,9 @@ class RateLimitingTest extends TestCase
         // Even the correct password is refused while locked out.
         $this->post('/login', ['email' => $user->email, 'password' => 'Test-password-123!'])
             ->assertSessionHasErrors('email');
-        $this->assertStringStartsWith('Too many login attempts.', session('errors')->first('email'));
+        $errors = session('errors');
+        $this->assertInstanceOf(ViewErrorBag::class, $errors);
+        $this->assertStringStartsWith('Too many login attempts.', $errors->first('email'));
         $this->postJson('/login', ['email' => $user->email, 'password' => 'Test-password-123!'])
             ->assertStatus(429);
         $this->assertGuest();

@@ -9,6 +9,7 @@
 #   base   PHP 8.5 + Apache with the extensions Laravel 13 / Passport 13 need.
 #          Apache runs as the unprivileged www-data user and listens on 8080.
 #   dev    base + Composer/git/unzip, used by docker-compose with a bind mount.
+#          Runs `composer install` on first start when vendor/ is missing.
 #   node-dev  Node 26 image running the Vite dev server (compose profile "dev").
 #   prod   immutable image: no-dev vendor/, built Vite assets, read-only code,
 #          writable storage/ and bootstrap/cache only, no Composer/Node/git.
@@ -89,14 +90,19 @@ RUN set -eux; \
 
 COPY --from=composer-bin /usr/bin/composer /usr/local/bin/composer
 COPY docker/php/opcache-dev.ini /usr/local/etc/php/conf.d/zz-opcache.ini
+COPY --chmod=0755 docker/entrypoint-dev.sh /usr/local/bin/entrypoint-dev
 
 ENV COMPOSER_HOME=/tmp/composer \
     COMPOSER_CACHE_DIR=/tmp/composer/cache
 
 USER www-data
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+# The first start of a fresh clone runs `composer install`, so allow extra time.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
     CMD curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8080/up || exit 1
+
+ENTRYPOINT ["entrypoint-dev"]
+CMD ["apache2-foreground"]
 
 # ---------------------------------------------------------------------------
 # node-dev: Vite dev server for docker-compose (profile "dev")
@@ -110,6 +116,7 @@ RUN mkdir -p /app/node_modules && chown -R node:node /app
 WORKDIR /app
 ENV npm_config_cache=/tmp/.npm npm_config_update_notifier=false
 USER node
+# Default Vite port; docker-compose passes VITE_PORT to change it.
 EXPOSE 5173
 CMD ["sh", "-c", "npm ci --no-audit --no-fund && exec npm run dev -- --host 0.0.0.0"]
 
