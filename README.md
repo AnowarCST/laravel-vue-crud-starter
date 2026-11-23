@@ -256,6 +256,8 @@ The application shows the document in Swagger UI at `/docs` (for example
 <http://localhost:8000/docs>) and serves the file at `/docs/openapi.yaml`.
 The viewer is bundled by Vite and loads nothing from a CDN.
 
+![The API documentation at /docs, showing the Meta, Profile and Products endpoints](docs/screenshots/api-docs.png)
+
 - With `APP_ENV=local`, both pages are on and anyone who can reach the app
   can open them.
 - In any other environment they are off and return 404. Set
