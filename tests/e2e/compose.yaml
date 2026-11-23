@@ -63,6 +63,9 @@ services:
       MAIL_PORT: "1025"
       MAIL_FROM_ADDRESS: no-reply@example.test
       MAIL_FROM_NAME: "Laravel Starter"
+      # Serve /docs with the production access rules (verified administrators
+      # only), so tests/e2e/api-docs.spec.js can check the viewer.
+      API_DOCS_ENABLED: "true"
     ports:
       - "127.0.0.1:${E2E_APP_PORT:-8080}:8080"
     depends_on:

@@ -1,8 +1,24 @@
 import { test, expect } from './support/test.js';
 import { storageState } from './support/env.js';
-import { apiRequest, confirmDeletion, expectToast, makePng, rowWith, uniqueSuffix } from './support/helpers.js';
+import {
+    apiRequest,
+    confirmDeletion,
+    createCategory,
+    createProduct,
+    expectToast,
+    makePng,
+    rowWith,
+    uniqueSuffix,
+} from './support/helpers.js';
 
 test.use({ storageState: storageState.admin });
+
+// Cells of a product row, in the order of the table columns.
+const COLUMNS = ['photo', 'name', 'sku', 'category', 'tags', 'stock', 'status', 'price', 'actions'];
+
+function cell(row, column) {
+    return row.getByRole('cell').nth(COLUMNS.indexOf(column));
+}
 
 test('an administrator can create, edit and delete a product with a category, tags and a photo', async ({ page }) => {
     const suffix = uniqueSuffix();
@@ -10,17 +26,21 @@ test('an administrator can create, edit and delete a product with a category, ta
     const name = `E2E Product ${suffix}`;
     const renamed = `E2E Product Renamed ${suffix}`;
     const tags = [`e2e-new-${suffix}`, `e2e-second-${suffix}`];
+    // Typed in lower case; the API stores SKUs in upper case.
+    const sku = `e2e-${suffix}`;
 
     // The test creates its own category instead of relying on demo data.
     await page.goto('/products');
-    const created = await apiRequest(page, 'POST', '/api/category', { name: categoryName, description: null });
-    expect(created.status).toBe(200);
+    const category = await createCategory(page, categoryName);
     await page.reload();
 
     await test.step('create', async () => {
         await page.getByRole('button', { name: 'Add new' }).click();
         const dialog = page.getByRole('dialog', { name: 'Create new product' });
         await dialog.getByLabel('Name').fill(name);
+        await dialog.getByLabel('SKU').fill(sku);
+        await dialog.getByLabel('Stock').fill('3');
+        await dialog.getByLabel('Status').selectOption('draft');
         await dialog.getByLabel('Description').fill('A product created by the end-to-end tests.');
         await dialog.getByLabel('Price').fill('1234.5');
         await dialog.getByLabel('Category').selectOption({ label: categoryName });
@@ -46,11 +66,14 @@ test('an administrator can create, edit and delete a product with a category, ta
 
     const row = () => rowWith(page, suffix);
 
-    await test.step('the list shows the new product, its category, tags and photo', async () => {
+    await test.step('the list shows the new product, its SKU, stock, status, category, tags and photo', async () => {
         await expect(row()).toContainText(name);
-        await expect(row()).toContainText(categoryName);
-        await expect(row()).toContainText('$1,234.50');
-        for (const tag of tags) await expect(row()).toContainText(tag);
+        await expect(cell(row(), 'sku')).toHaveText(sku.toUpperCase());
+        await expect(cell(row(), 'category')).toHaveText(categoryName);
+        await expect(cell(row(), 'stock')).toHaveText(/^\s*Low stock\s*3\s*$/);
+        await expect(cell(row(), 'status')).toHaveText('Draft');
+        await expect(cell(row(), 'price')).toHaveText('$1,234.50');
+        for (const tag of tags) await expect(cell(row(), 'tags')).toContainText(tag);
 
         const photo = row().locator('img.product-thumb');
         await expect(photo).toHaveAttribute('src', /\/storage\/uploads\/[A-Za-z0-9]+\.png$/);
@@ -67,19 +90,28 @@ test('an administrator can create, edit and delete a product with a category, ta
         await page.getByRole('button', { name: `Edit ${name}` }).click();
         const dialog = page.getByRole('dialog', { name: 'Update product' });
         await expect(dialog.getByLabel('Name')).toHaveValue(name);
-        await expect(dialog.getByLabel('Category')).toHaveValue(String(created.body.data.id));
+        await expect(dialog.getByLabel('SKU')).toHaveValue(sku.toUpperCase());
+        await expect(dialog.getByLabel('Stock')).toHaveValue('3');
+        await expect(dialog.getByLabel('Status')).toHaveValue('draft');
+        await expect(dialog.getByLabel('Price')).toHaveValue('1234.50');
+        await expect(dialog.getByLabel('Category')).toHaveValue(String(category.id));
         await expect(dialog.getByRole('img', { name: 'Product photo preview' })).toBeVisible();
 
         await dialog.getByLabel('Name').fill(renamed);
         await dialog.getByLabel('Price').fill('99');
+        await dialog.getByLabel('Stock').fill('0');
+        await dialog.getByLabel('Status').selectOption('archived');
         await dialog.getByRole('button', { name: `Remove tag ${tags[1]}` }).click();
         await dialog.getByRole('button', { name: 'Update' }).click();
 
         await expectToast(page, 'Product Information has been updated');
         await expect(row()).toContainText(renamed);
-        await expect(row()).toContainText('$99.00');
-        await expect(row()).toContainText(tags[0]);
-        await expect(row()).not.toContainText(tags[1]);
+        await expect(cell(row(), 'sku')).toHaveText(sku.toUpperCase());
+        await expect(cell(row(), 'stock')).toHaveText('Out of stock');
+        await expect(cell(row(), 'status')).toHaveText('Archived');
+        await expect(cell(row(), 'price')).toHaveText('$99.00');
+        await expect(cell(row(), 'tags')).toContainText(tags[0]);
+        await expect(cell(row(), 'tags')).not.toContainText(tags[1]);
         await expect(row().locator('img.product-thumb')).toBeVisible();
     });
 
@@ -89,6 +121,40 @@ test('an administrator can create, edit and delete a product with a category, ta
         await expectToast(page, 'Product has been Deleted');
         await expect(row()).toHaveCount(0);
     });
+});
+
+test('a new product needs a SKU that no other product uses', async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const categoryName = `E2E SKU Category ${suffix}`;
+    const takenSku = `E2E-TAKEN-${suffix}`.toUpperCase();
+
+    await page.goto('/products');
+    const category = await createCategory(page, categoryName);
+    await createProduct(page, { name: `E2E Existing ${suffix}`, sku: takenSku, category_id: category.id });
+    await page.reload();
+
+    await page.getByRole('button', { name: 'Add new' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create new product' });
+    await dialog.getByLabel('Name').fill(`E2E New ${suffix}`);
+    await dialog.getByLabel('Description').fill('Created by the SKU validation test.');
+    await dialog.getByLabel('Price').fill('5');
+    await dialog.getByLabel('Category').selectOption({ label: categoryName });
+
+    await test.step('an empty SKU is rejected', async () => {
+        await dialog.getByRole('button', { name: 'Create' }).click();
+        await expect(dialog.getByText('The SKU field is required.')).toBeVisible();
+        await expect(dialog.getByLabel('SKU')).toHaveClass(/is-invalid/);
+    });
+
+    // Typed in lower case: the API converts it to upper case before checking.
+    await test.step('a SKU that is already used is rejected', async () => {
+        await dialog.getByLabel('SKU').fill(takenSku.toLowerCase());
+        await dialog.getByRole('button', { name: 'Create' }).click();
+        await expect(dialog.getByText('The SKU has already been taken.')).toBeVisible();
+        await expect(dialog).toBeVisible();
+    });
+
+    await expect(rowWith(page, `E2E New ${suffix}`)).toHaveCount(0);
 });
 
 test('a file that is not an image is rejected', async ({ page }) => {
@@ -118,23 +184,20 @@ test.describe('as a regular user', () => {
         const adminContext = await browser.newContext({ storageState: storageState.admin });
         const adminPage = await adminContext.newPage();
         await adminPage.goto('/developer');
-        const category = await apiRequest(adminPage, 'POST', '/api/category', { name: `E2E Category ${suffix}` });
-        const product = await apiRequest(adminPage, 'POST', '/api/product', {
+        const category = await createCategory(adminPage, `E2E Category ${suffix}`);
+        const product = await createProduct(adminPage, {
             name,
-            description: 'Created for the permission test.',
-            price: 10,
-            category_id: category.body?.data?.id,
-            tags: [],
+            sku: `E2E-USER-${suffix}`.toUpperCase(),
+            category_id: category.id,
         });
         await adminContext.close();
-        expect(product.status, 'create the test product').toBe(200);
 
         await page.goto('/products');
         await expect(rowWith(page, name)).toBeVisible();
         await expect(page.getByRole('button', { name: `Edit ${name}` })).toBeVisible();
         await expect(page.getByRole('button', { name: `Delete ${name}` })).toHaveCount(0);
 
-        const response = await apiRequest(page, 'DELETE', `/api/product/${product.body.data.id}`);
+        const response = await apiRequest(page, 'DELETE', `/api/product/${product.id}`);
         expect(response.status).toBe(403);
     });
 });

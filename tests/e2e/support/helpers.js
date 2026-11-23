@@ -65,6 +65,32 @@ export function apiRequest(page, method, url, body) {
     );
 }
 
+/**
+ * Create a category through the API and return it. Tests create their own
+ * categories and products, so they never depend on the demo data.
+ */
+export async function createCategory(page, name) {
+    const response = await apiRequest(page, 'POST', '/api/category', { name, description: null });
+    expect(response.status, `create category ${name}`).toBe(200);
+    return response.body.data;
+}
+
+/**
+ * Create a product through the API and return it. `name`, `sku` and
+ * `category_id` must be given; the other fields have defaults here, and the
+ * API defaults stock to 0 and status to "active".
+ */
+export async function createProduct(page, product) {
+    const response = await apiRequest(page, 'POST', '/api/product', {
+        description: 'Created by the end-to-end tests.',
+        price: 10,
+        tags: [],
+        ...product,
+    });
+    expect(response.status, `create product ${product.name}`).toBe(200);
+    return response.body.data;
+}
+
 /** Wait for the SweetAlert2 toast with this title. */
 export async function expectToast(page, text) {
     await expect(page.locator('.swal2-toast .swal2-title')).toHaveText(text);
