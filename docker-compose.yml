@@ -94,7 +94,7 @@ services:
   # Local mail catcher. The app sends mail to mailpit:1025 (see MAIL_* in
   # .env.example); the web inbox is published on 127.0.0.1 only.
   mailpit:
-    image: axllent/mailpit:v1.33.1
+    image: axllent/mailpit:v1.34.0
     ports:
       - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
     security_opt:
