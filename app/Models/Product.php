@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use App\Enums\ProductStatus;
+use App\Enums\StockLevel;
 use App\Policies\ProductPolicy;
 use Database\Factories\ProductFactory;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\UsePolicy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -55,6 +58,67 @@ class Product extends Model
             'stock' => 'integer',
             'status' => ProductStatus::class,
         ];
+    }
+
+    /**
+     * Case-insensitive match on name, SKU or description. "%" and "_" in the
+     * search text are matched literally ("!" is the LIKE escape character,
+     * which behaves the same on MySQL and SQLite).
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function search(Builder $query, string $text): void
+    {
+        $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $text).'%';
+
+        $query->where(function (Builder $where) use ($pattern): void {
+            foreach (['name', 'sku', 'description'] as $column) {
+                $where->orWhereRaw("{$column} like ? escape '!'", [$pattern]);
+            }
+        });
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function taggedWith(Builder $query, int $tagId): void
+    {
+        $query->whereHas('tags', fn (Builder $tags) => $tags->where('tags.id', $tagId));
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function stockLevel(Builder $query, StockLevel $level): void
+    {
+        match ($level) {
+            StockLevel::In => $query->where('stock', '>', 0),
+            StockLevel::Low => $this->lowStock($query),
+            StockLevel::Out => $this->outOfStock($query),
+        };
+    }
+
+    /**
+     * 1 to LOW_STOCK_THRESHOLD units.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function lowStock(Builder $query): void
+    {
+        $query->whereBetween('stock', [1, self::LOW_STOCK_THRESHOLD]);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function outOfStock(Builder $query): void
+    {
+        $query->where('stock', 0);
     }
 
     /**

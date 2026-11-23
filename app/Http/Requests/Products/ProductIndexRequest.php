@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Products;
 
 use App\Enums\ProductStatus;
+use App\Enums\StockLevel;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,12 +35,6 @@ class ProductIndexRequest extends FormRequest
         '-stock' => ['stock', 'desc'],
     ];
 
-    /**
-     * Allowed "stock" values: "in" (1 or more), "low" (1 to
-     * Product::LOW_STOCK_THRESHOLD) and "out" (0).
-     */
-    public const STOCK_LEVELS = ['in', 'low', 'out'];
-
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -55,7 +50,7 @@ class ProductIndexRequest extends FormRequest
             'category_id' => ['nullable', 'integer', 'min:1'],
             'tag' => ['nullable', 'integer', 'min:1'],
             'status' => ['nullable', 'string', Rule::enum(ProductStatus::class)],
-            'stock' => ['nullable', 'string', Rule::in(self::STOCK_LEVELS)],
+            'stock' => ['nullable', 'string', Rule::enum(StockLevel::class)],
             'sort' => ['nullable', 'string', Rule::in(array_keys(self::SORTS))],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
             'page' => ['nullable', 'integer', 'min:1'],
@@ -88,6 +83,14 @@ class ProductIndexRequest extends FormRequest
     public function status(): ?ProductStatus
     {
         return $this->enum('status', ProductStatus::class);
+    }
+
+    /**
+     * The validated "stock" parameter, or null when it was not sent.
+     */
+    public function stockLevel(): ?StockLevel
+    {
+        return $this->enum('stock', StockLevel::class);
     }
 
     /**

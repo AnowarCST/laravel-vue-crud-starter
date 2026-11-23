@@ -79,7 +79,10 @@ flowchart LR
   same list. It sends them to `GET /api/product`.
 - `ProductIndexRequest` validates those query parameters. Unknown values are
   rejected with `422`, so only allowed sort columns and bound values reach
-  the database query. `ProductController::index()` applies them.
+  the database query. `ProductController::index()` applies them with the
+  query scopes on `Product` (`search`, `taggedWith`, `stockLevel`,
+  `lowStock`, `outOfStock`). `search` escapes `%` and `_`, so they match
+  literally.
 - A product is "low stock" with 1 to `Product::LOW_STOCK_THRESHOLD` (5) units
   and "out of stock" with 0. `GET /api/product/stats` returns the counts the
   dashboard shows (by status, low stock and out of stock).
@@ -167,7 +170,7 @@ flowchart LR
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
 | `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
 | `app/Http/Requests/` | Form Requests: `Categories/CategoryRequest`, `Tags/TagRequest`, `Products/ProductRequest`, `Products/ProductIndexRequest`, `Products/ProductImageRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
-| `app/Enums/` | `UserType` (`admin`, `user`) and `ProductStatus` (`active`, `draft`, `archived`). |
+| `app/Enums/` | `UserType` (`admin`, `user`), `ProductStatus` (`active`, `draft`, `archived`) and `StockLevel` (the `in`, `low` and `out` values of the product list's `stock` filter). |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
 | `app/Policies/` | One policy per model, linked to it with `#[UsePolicy]` on the model. |
 | `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate, the password rule (`Password::defaults()`). |
