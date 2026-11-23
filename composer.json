@@ -23,7 +23,8 @@
         "mockery/mockery": "^1.6.15",
         "nunomaduro/collision": "^8.9.6",
         "phpstan/phpstan-phpunit": "^2.1.2",
-        "phpunit/phpunit": "^13.4.8"
+        "phpunit/phpunit": "^13.4.8",
+        "symfony/yaml": "^8.1.11"
     },
     "config": {
         "optimize-autoloader": true,

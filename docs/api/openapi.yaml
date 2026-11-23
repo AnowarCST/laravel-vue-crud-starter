@@ -1,0 +1,1376 @@
+openapi: 3.1.0
+info:
+  title: Laravel Vue CRUD Starter API
+  version: 1.0.1
+  summary: JSON API used by the dashboard and by API clients.
+  description: |
+    The JSON API under `/api`. The dashboard (the Vue single-page application)
+    uses it, and so can any other client that has a token.
+
+    ## Authentication
+
+    Every endpoint except `GET /api/version` needs an authenticated account
+    with a **verified email address**. The Passport `api` guard accepts two
+    kinds of credentials:
+
+    - **Bearer token** (`bearerToken`): a Passport personal access token or an
+      OAuth2 access token, sent as `Authorization: Bearer <token>`. Create a
+      personal access token on the dashboard's **Developer** page (the server
+      needs a personal access client, created with
+      `php artisan passport:client --personal`). Personal access tokens expire
+      after 6 months. Changing the account password revokes all of the
+      account's tokens.
+    - **SPA cookie** (`spaCookie` + `csrfToken`): after a browser signs in,
+      every `GET` page load sets the encrypted, HttpOnly `laravel_token`
+      cookie. Requests that send this cookie must also send the session's CSRF
+      token in the `X-CSRF-TOKEN` header (or the `XSRF-TOKEN` cookie value in
+      `X-XSRF-TOKEN`). If the CSRF token is missing or wrong, the request is
+      treated as unauthenticated (`401`). This is how the dashboard and the
+      "Try it out" button on `/docs` call the API.
+
+    If both are present, the bearer token is used.
+
+    ## Requests and responses
+
+    - Send `Accept: application/json`. Request bodies are JSON unless noted.
+    - Successful responses (except `GET /api/version`) use the envelope
+      `{"success": true, "data": ..., "message": "..."}`.
+    - List endpoints return a Laravel length-aware paginator in `data`
+      (10 items per page, newest first, `?page=` selects the page).
+    - Errors have a `message` field. Validation errors (`422`) also have an
+      `errors` object that maps each field to a list of messages.
+    - An account whose email address is not verified receives `403` with the
+      message `Your email address is not verified.` on every authenticated
+      endpoint.
+    - When `APP_DEBUG=false`, `404` and `500` bodies are generic
+      (`Not Found.` and `Server Error`).
+
+    ## Rate limiting
+
+    Every `/api` route uses the `api` rate limiter: 60 requests per minute per
+    account, or per IP address for unauthenticated requests. Responses carry
+    `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Over the limit, the API
+    returns `429` with a `Retry-After` header.
+
+    ## Roles
+
+    Accounts have a `type` of `admin` or `user`. Any verified account can read,
+    create and update products, categories and tags. Only administrators can
+    delete them, and only administrators can manage accounts (`/api/user`).
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /api
+    description: This application (the API lives under /api on the same host)
+tags:
+  - name: Meta
+    description: Application information. No authentication.
+  - name: Profile
+    description: The signed-in account. These endpoints only ever change the caller's own account.
+  - name: Products
+    description: Products, their tags and product images. Deleting requires an administrator.
+  - name: Categories
+    description: Product categories. Deleting requires an administrator.
+  - name: Tags
+    description: Product tags. Deleting requires an administrator.
+  - name: Users
+    description: Account management. Administrators only.
+security:
+  - bearerToken: []
+  - spaCookie: []
+    csrfToken: []
+paths:
+  /version:
+    get:
+      tags: [Meta]
+      operationId: getVersion
+      summary: Get the application version
+      description: Returns `config('app.version')` (the `APP_VERSION` environment variable). This endpoint does not use the response envelope.
+      security: []
+      responses:
+        '200':
+          description: The application version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version:
+                    type: string
+                    examples: ['1.0.1']
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /profile:
+    get:
+      tags: [Profile]
+      operationId: getProfile
+      summary: Get the signed-in account
+      responses:
+        '200':
+          description: The signed-in account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags: [Profile]
+      operationId: updateProfile
+      summary: Update the signed-in account's name and email address
+      description: |
+        Only `name` and `email` are accepted; any other field (such as `type`
+        or `password`) is ignored. If the email address changes, the account
+        becomes unverified and a verification email is sent to the new
+        address. Until the new address is verified, authenticated endpoints
+        return `403`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name:
+                  type: string
+                  maxLength: 191
+                email:
+                  type: string
+                  format: email
+                  maxLength: 191
+                  description: Must not belong to another account.
+      responses:
+        '200':
+          description: The updated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /change-password:
+    post:
+      tags: [Profile]
+      operationId: changePassword
+      summary: Change the signed-in account's password
+      description: |
+        On success, every OAuth access token and refresh token of the account
+        is revoked, including the bearer token used for this request. Browser
+        sessions that signed in with the old password are signed out the next
+        time they load a page (Laravel's `AuthenticateSession` middleware).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password, confirm_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 12
+                  maxLength: 72
+                  description: At least 12 characters, at most 72 characters and 72 bytes, and different from `current_password`.
+                confirm_password:
+                  type: string
+                  format: password
+                  description: Must match `new_password`.
+      responses:
+        '200':
+          description: The password was changed. `data` is an empty array.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        maxItems: 0
+              example:
+                success: true
+                data: []
+                message: Password Has been updated
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /product:
+    get:
+      tags: [Products]
+      operationId: listProducts
+      summary: List products
+      description: Products with their category and tags, newest first, 10 per page. Soft-deleted products are not included.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of products.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProductPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags: [Products]
+      operationId: createProduct
+      summary: Create a product
+      description: |
+        Upload the image first with `POST /api/product/upload` and send the
+        returned `path` as `photo`. Tags are matched by name and created if
+        they do not exist yet. The response does not include the `category`
+        and `tags` relations; fetch the product to get them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: The created product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /product/upload:
+    post:
+      tags: [Products]
+      operationId: uploadProductImage
+      summary: Upload a product image
+      description: |
+        Accepts a JPEG, PNG or WebP image of at most 5 MB and 4096x4096 pixels.
+        The server decodes the image and stores a re-encoded copy (same format)
+        under a random name, so metadata such as EXIF and GPS data, and
+        anything hidden in or appended to the file, is removed. Files that
+        cannot be decoded as an image are rejected with `422`. Use the returned
+        `path` as the `photo` of a product.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+                  description: The image file (`jpg`, `jpeg`, `png` or `webp`).
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '200':
+          description: The stored image.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [path, url]
+                        properties:
+                          path:
+                            type: string
+                            pattern: '^uploads/[A-Za-z0-9]{40}\.(jpg|png|webp)$'
+                            description: Path on the `public` disk. Send it as `photo` when creating or updating a product.
+                          url:
+                            type: string
+                            description: Browser URL of the stored image (under `/storage/uploads/`).
+              example:
+                success: true
+                data:
+                  path: uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
+                  url: http://localhost:8000/storage/uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png
+                message: Image uploaded
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /product/{product}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Get a product
+      description: The product with its category and tags.
+      responses:
+        '200':
+          description: The product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags: [Products]
+      operationId: updateProduct
+      summary: Update a product
+      description: |
+        `PATCH` is accepted as well and behaves the same way. All fields except
+        `tags` and `photo` are required. If `tags` is sent, the product's tags
+        are replaced by that list; if it is left out, the tags do not change.
+        `photo` must be a path returned by `POST /api/product/upload`, or the
+        product's current `photo` value. When the photo is replaced, the old
+        uploaded file is deleted if no other product uses it. The response
+        does not include the `category` and `tags` relations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: The updated product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags: [Products]
+      operationId: deleteProduct
+      summary: Delete a product (administrators only)
+      description: Soft-deletes the product. The response contains the product with `deleted_at` set.
+      responses:
+        '200':
+          description: The deleted product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /category:
+    get:
+      tags: [Categories]
+      operationId: listCategories
+      summary: List categories
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of categories, newest first.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CategoryPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags: [Categories]
+      operationId: createCategory
+      summary: Create a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '200':
+          description: The created category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /category/list:
+    get:
+      tags: [Categories]
+      operationId: listCategoryNames
+      summary: List all category names
+      description: Every category as an object that maps the category id to its name, for select inputs. Not paginated.
+      responses:
+        '200':
+          description: Category names keyed by id.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties:
+                          type: string
+              example:
+                success: true
+                data:
+                  '1': Electronics
+                  '2': Books
+                message: Category list
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /category/{category}:
+    parameters:
+      - $ref: '#/components/parameters/CategoryId'
+    get:
+      tags: [Categories]
+      operationId: getCategory
+      summary: Get a category
+      responses:
+        '200':
+          description: The category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags: [Categories]
+      operationId: updateCategory
+      summary: Update a category
+      description: '`PATCH` is accepted as well and behaves the same way. `name` is required.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '200':
+          description: The updated category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags: [Categories]
+      operationId: deleteCategory
+      summary: Delete a category (administrators only)
+      description: Products that use the category are not changed.
+      responses:
+        '200':
+          description: The deleted category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /tag:
+    get:
+      tags: [Tags]
+      operationId: listTags
+      summary: List tags
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of tags, newest first.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TagPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags: [Tags]
+      operationId: createTag
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagInput'
+      responses:
+        '200':
+          description: The created tag.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /tag/list:
+    get:
+      tags: [Tags]
+      operationId: listTagNames
+      summary: List all tag names
+      description: Every tag's `name` and `id`, for tag inputs. Not paginated.
+      responses:
+        '200':
+          description: All tags.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          required: [name, id]
+                          properties:
+                            name:
+                              type: string
+                            id:
+                              type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /tag/{tag}:
+    parameters:
+      - $ref: '#/components/parameters/TagId'
+    get:
+      tags: [Tags]
+      operationId: getTag
+      summary: Get a tag
+      responses:
+        '200':
+          description: The tag.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags: [Tags]
+      operationId: updateTag
+      summary: Update a tag
+      description: '`PATCH` is accepted as well and behaves the same way.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagInput'
+      responses:
+        '200':
+          description: The updated tag.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags: [Tags]
+      operationId: deleteTag
+      summary: Delete a tag (administrators only)
+      responses:
+        '200':
+          description: The deleted tag.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /user:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: List accounts (administrators only)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of accounts, newest first.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Create an account (administrators only)
+      description: The new account's email address is marked as verified, because an administrator chose it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, name, email, password]
+              properties:
+                type:
+                  $ref: '#/components/schemas/UserType'
+                name:
+                  type: string
+                  maxLength: 191
+                email:
+                  type: string
+                  format: email
+                  maxLength: 191
+                  description: Must not belong to another account.
+                password:
+                  type: string
+                  format: password
+                  minLength: 12
+                  maxLength: 72
+                  description: At least 12 characters, at most 72 characters and 72 bytes.
+      responses:
+        '200':
+          description: The created account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /user/{user}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Get an account (administrators only)
+      description: Non-administrators always receive `403`, whether or not the account exists.
+      responses:
+        '200':
+          description: The account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags: [Users]
+      operationId: updateUser
+      summary: Update an account (administrators only)
+      description: |
+        `PATCH` is accepted as well and behaves the same way. Every field is
+        optional; fields that are left out do not change. An empty or `null`
+        `password` keeps the current password. Administrators cannot change
+        the `type` of their own account (`422`). Changing the password revokes
+        all of that account's OAuth tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  $ref: '#/components/schemas/UserType'
+                name:
+                  type: string
+                  maxLength: 191
+                email:
+                  type: string
+                  format: email
+                  maxLength: 191
+                  description: Must not belong to another account.
+                password:
+                  type: [string, 'null']
+                  format: password
+                  minLength: 12
+                  maxLength: 72
+                  description: At least 12 characters, at most 72 characters and 72 bytes.
+      responses:
+        '200':
+          description: The updated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags: [Users]
+      operationId: deleteUser
+      summary: Delete an account (administrators only)
+      description: |
+        Permanently deletes the account and revokes its OAuth tokens.
+        Administrators cannot delete their own account (`403`). Note that
+        `data` is an array that contains the deleted account.
+      responses:
+        '200':
+          description: The deleted account, wrapped in an array.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items:
+                          $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+components:
+  securitySchemes:
+    bearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A Passport personal access token (create one on the dashboard's
+        Developer page) or an OAuth2 access token issued by this server's
+        `/oauth/token` endpoint.
+    spaCookie:
+      type: apiKey
+      in: cookie
+      name: laravel_token
+      description: |
+        Encrypted, HttpOnly cookie that Passport's `CreateFreshApiToken`
+        middleware sets on `GET` page loads for a signed-in browser session.
+        Only valid together with `csrfToken`.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: |
+        The session CSRF token (the `csrf-token` meta tag on the application's
+        pages). Required with `spaCookie`; `X-XSRF-TOKEN` with the value of the
+        `XSRF-TOKEN` cookie also works.
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Page number (10 items per page).
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    ProductId:
+      name: product
+      in: path
+      required: true
+      description: Product id.
+      schema:
+        type: integer
+        minimum: 1
+    CategoryId:
+      name: category
+      in: path
+      required: true
+      description: Category id.
+      schema:
+        type: integer
+        minimum: 1
+    TagId:
+      name: tag
+      in: path
+      required: true
+      description: Tag id.
+      schema:
+        type: integer
+        minimum: 1
+    UserId:
+      name: user
+      in: path
+      required: true
+      description: Account id.
+      schema:
+        type: integer
+        minimum: 1
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+    RateLimitLimit:
+      description: Requests allowed per minute.
+      schema:
+        type: integer
+    RateLimitRemaining:
+      description: Requests left in the current minute.
+      schema:
+        type: integer
+
+  responses:
+    Unauthenticated:
+      description: No valid bearer token, or the SPA cookie was sent without a matching CSRF token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Unauthenticated.
+    EmailNotVerified:
+      description: The account has not verified its email address.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Your email address is not verified.
+    Forbidden:
+      description: The account may not perform this action, or its email address is not verified.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notAllowed:
+              summary: Not allowed (for example, not an administrator)
+              value:
+                message: This action is unauthorized.
+            emailNotVerified:
+              summary: Email address not verified
+              value:
+                message: Your email address is not verified.
+    NotFound:
+      description: No record with this id exists. With `APP_DEBUG=true` the message names the model instead.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Not Found.
+    ValidationFailed:
+      description: The request body failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            message: The name field is required. (and 1 more error)
+            errors:
+              name:
+                - The name field is required.
+              email:
+                - The email field is required.
+    TooManyRequests:
+      description: The rate limit (60 requests per minute) was exceeded.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Too Many Attempts.
+
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ValidationError:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+          description: The first error message, plus the number of other errors.
+        errors:
+          type: object
+          description: Error messages for each invalid field.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    SuccessEnvelope:
+      type: object
+      required: [success, data, message]
+      properties:
+        success:
+          const: true
+        data:
+          description: The result. Its type depends on the endpoint.
+        message:
+          type: string
+          description: A short, human-readable description of the result.
+
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 timestamp in UTC, with microseconds.
+      examples: ['2026-01-31T09:30:00.000000Z']
+
+    PaginatorMeta:
+      type: object
+      description: Laravel length-aware paginator fields. `data` holds the items of the page.
+      required: [current_page, first_page_url, from, last_page, last_page_url, links, next_page_url, path, per_page, prev_page_url, to, total]
+      properties:
+        current_page:
+          type: integer
+        first_page_url:
+          type: string
+        from:
+          type: [integer, 'null']
+          description: Position of the first item on this page, or null for an empty page.
+        last_page:
+          type: integer
+        last_page_url:
+          type: string
+        links:
+          type: array
+          description: Links for a pagination control, including "Previous" and "Next".
+          items:
+            type: object
+            required: [url, label, active]
+            properties:
+              url:
+                type: [string, 'null']
+              label:
+                type: string
+                description: Page number, or an HTML-escaped "Previous" / "Next" label.
+              page:
+                type: [integer, 'null']
+              active:
+                type: boolean
+        next_page_url:
+          type: [string, 'null']
+        path:
+          type: string
+        per_page:
+          type: integer
+          examples: [10]
+        prev_page_url:
+          type: [string, 'null']
+        to:
+          type: [integer, 'null']
+        total:
+          type: integer
+
+    UserType:
+      type: string
+      enum: [admin, user]
+    User:
+      type: object
+      required: [id, name, email, type, email_verified_at, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        type:
+          $ref: '#/components/schemas/UserType'
+        email_verified_at:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    UserResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/User'
+    UserPage:
+      allOf:
+        - $ref: '#/components/schemas/PaginatorMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+
+    Category:
+      type: object
+      required: [id, name, description, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 191
+        description:
+          type: [string, 'null']
+          maxLength: 1000
+    CategoryResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Category'
+    CategoryPage:
+      allOf:
+        - $ref: '#/components/schemas/PaginatorMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Category'
+
+    Tag:
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    TagInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 191
+    TagResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Tag'
+    TagPage:
+      allOf:
+        - $ref: '#/components/schemas/PaginatorMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Tag'
+
+    ProductTag:
+      type: object
+      description: A tag as it appears on a product. The tag name is in `text`.
+      required: [text, id]
+      properties:
+        text:
+          type: string
+          description: The tag name.
+        id:
+          type: integer
+        pivot:
+          type: object
+          properties:
+            product_id:
+              type: integer
+            tag_id:
+              type: integer
+    Product:
+      type: object
+      required: [id, name, description, price, category_id, photo, photo_url, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        price:
+          type: [string, number]
+          description: Stored as a string. Create and update responses echo the value as it was sent; reads return a string such as "12.5".
+          examples: ['12.5']
+        category_id:
+          type: integer
+        photo:
+          type: [string, 'null']
+          description: Path of the image on the `public` disk (for example `uploads/<random>.png`), or a legacy path under `public/` for demo data.
+        photo_url:
+          type: [string, 'null']
+          description: Browser URL of the image, or null when the product has no photo.
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        deleted_at:
+          description: Set when the product has been deleted (soft delete).
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        category:
+          description: Included when reading products (list and get). Null if the category no longer exists.
+          oneOf:
+            - $ref: '#/components/schemas/Category'
+            - type: 'null'
+        tags:
+          type: array
+          description: Included when reading products (list and get).
+          items:
+            $ref: '#/components/schemas/ProductTag'
+    ProductInput:
+      type: object
+      required: [category_id, name, description, price]
+      properties:
+        category_id:
+          type: integer
+          description: Id of an existing category.
+        name:
+          type: string
+          maxLength: 191
+        description:
+          type: string
+          maxLength: 1000
+        price:
+          type: number
+          minimum: 0
+          maximum: 999999999.99
+        tags:
+          type: array
+          maxItems: 50
+          description: Tag names. Missing tags are created.
+          items:
+            type: object
+            required: [text]
+            properties:
+              text:
+                type: string
+                maxLength: 191
+          examples:
+            - - text: Sedan
+              - text: Electric
+        photo:
+          type: [string, 'null']
+          maxLength: 191
+          description: A `path` returned by `POST /api/product/upload` (or, on update, the product's current value).
+          examples: ['uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png']
+    ProductResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Product'
+    ProductPage:
+      allOf:
+        - $ref: '#/components/schemas/PaginatorMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Product'
