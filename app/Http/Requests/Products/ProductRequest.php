@@ -100,7 +100,7 @@ class ProductRequest extends FormRequest
      */
     public function productAttributes(): array
     {
-        return $this->safe()->except('tags');
+        return array_diff_key($this->validated(), ['tags' => true]);
     }
 
     /**

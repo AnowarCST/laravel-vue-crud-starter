@@ -71,7 +71,7 @@ jobs:
       - name: Check code style (Pint)
         run: composer lint
 
-      - name: Static analysis (Larastan, level 9)
+      - name: Static analysis (Larastan, level 10)
         run: composer analyse
 
       - name: Run tests

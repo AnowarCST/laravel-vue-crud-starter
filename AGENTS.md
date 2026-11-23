@@ -18,8 +18,8 @@ so the code must stay simple, secure by default and fully tested.
 Stack (installed versions): PHP 8.5, Laravel 13.43, Passport 13.12,
 laravel/ui 4.6, Vue 3.5, Vue Router 5.5, Vite 8.3, AdminLTE 4.10,
 Bootstrap 5.3, MySQL 9.7 LTS, Node 26 LTS (build tooling only). Quality:
-Pint, Larastan level 9, PHPUnit 13, ESLint 10, Prettier 3, Playwright 1.65,
-OWASP ZAP.
+Pint, Larastan level 10 (the maximum), PHPUnit 13, ESLint 10, Prettier 3,
+Playwright 1.65, OWASP ZAP.
 
 ## Scoped instructions
 

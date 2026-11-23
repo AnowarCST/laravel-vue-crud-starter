@@ -79,7 +79,7 @@ A short orientation for contributors. For setup instructions see
 
 ## Quality checks
 
-- PHP: `composer lint` (Pint), `composer analyse` (Larastan level 9),
+- PHP: `composer lint` (Pint), `composer analyse` (Larastan, level 10),
   `php artisan test`, `composer audit`.
 - JavaScript and Vue: `npm run lint` (ESLint), `npm run format:check`
   (Prettier), `npm run build`, `npm audit`.

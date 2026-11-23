@@ -335,7 +335,7 @@ Always on:
 - `.github/workflows/ci.yml`, on pushes to `main`, on pull requests and on
   demand:
   - **php**: `composer validate --strict`, `composer install`,
-    `composer audit`, Pint (`composer lint`), Larastan level 9
+    `composer audit`, Pint (`composer lint`), Larastan level 10
     (`composer analyse`) and `php artisan test`.
   - **frontend**: `npm ci`, ESLint, Prettier check, `npm audit
     --audit-level=moderate` and `npm run build`.

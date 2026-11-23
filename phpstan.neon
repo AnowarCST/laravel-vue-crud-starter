@@ -3,10 +3,9 @@ includes:
     - vendor/phpstan/phpstan-phpunit/extension.neon
 
 parameters:
-    # Level 9 is the strictest level this codebase passes without a baseline.
-    # Level 10 additionally reports framework methods that return a plain
-    # `array` (validated request input) where Eloquent expects array<string, mixed>.
-    level: 9
+    # Level 10 is the strictest level. The code passes it without a baseline
+    # or ignored errors; keep it that way.
+    level: 10
     # Read model casts from the body of casts() rather than from its
     # `array<string, string>` return type, so cast attributes (enums, dates,
     # hashed passwords) get their cast types.

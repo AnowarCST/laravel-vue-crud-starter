@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\DB;
@@ -185,8 +186,12 @@ class EmailVerificationTest extends TestCase
         $verifiedAt = now()->subYear()->startOfSecond();
         $verified = User::factory()->create(['email_verified_at' => $verifiedAt]);
 
+        // Typed the same way as in ProductInventoryMigrationTest.
         $migration = require database_path('migrations/2026_11_23_000002_mark_existing_users_as_verified.php');
-        $migration->up();
+        $this->assertInstanceOf(Migration::class, $migration);
+        $up = [$migration, 'up'];
+        $this->assertIsCallable($up);
+        $up();
 
         foreach ($unverified as $user) {
             $this->assertTrue($user->refresh()->hasVerifiedEmail());

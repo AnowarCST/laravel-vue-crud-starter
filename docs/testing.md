@@ -25,7 +25,7 @@ never touch your MySQL data. Feature tests are grouped by area in
 | Check | Command | Fix automatically |
 | --- | --- | --- |
 | PHP code style (Pint) | `docker compose exec app composer lint` | `docker compose exec app composer format` |
-| PHP static analysis (Larastan, level 9) | `docker compose exec app composer analyse` | |
+| PHP static analysis (Larastan, level 10) | `docker compose exec app composer analyse` | |
 | PHP tests (PHPUnit) | `docker compose exec app php artisan test` | |
 | JavaScript and Vue lint (ESLint) | `docker compose --profile dev run --rm node npm run lint` | `npm run lint:fix` |
 | JavaScript and Vue formatting (Prettier) | `docker compose --profile dev run --rm node npm run format:check` | `npm run format` |

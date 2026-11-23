@@ -15,7 +15,7 @@ repositories they count against your plan.
 
 | Workflow | What it runs | When it runs | Time | How to turn it on or off |
 | --- | --- | --- | --- | --- |
-| `.github/workflows/ci.yml`, job **php** | `composer validate --strict`, `composer install`, `composer audit`, Pint, Larastan (level 9), PHPUnit | Every pull request, every push to `main`, manual runs | under 1 min | Always on |
+| `.github/workflows/ci.yml`, job **php** | `composer validate --strict`, `composer install`, `composer audit`, Pint, Larastan (level 10), PHPUnit | Every pull request, every push to `main`, manual runs | under 1 min | Always on |
 | `.github/workflows/ci.yml`, job **frontend** | `npm ci`, ESLint, Prettier check, `npm audit --audit-level=moderate`, Vite build | Same as **php** | under 1 min | Always on |
 | `.github/workflows/codeql.yml` | CodeQL (`security-extended`) for JavaScript/TypeScript and for the workflows themselves | Every pull request, every push to `main`, Mondays, manual runs | about 1 min per language | Always on |
 | `.github/workflows/docker.yml` | Builds the `prod` image and checks that `/up` responds | Opt-in, see below | 1 to 2 min | Variable `RUN_DOCKER_BUILD`, label `run-docker-build`, or **Run workflow** |

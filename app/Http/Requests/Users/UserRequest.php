@@ -76,7 +76,7 @@ class UserRequest extends FormRequest
      */
     public function accountChanges(): array
     {
-        $changes = $this->safe()->only(['name', 'email', 'type']);
+        $changes = $this->safe(['name', 'email', 'type']);
 
         if ($this->safe()->filled('password')) {
             $changes['password'] = $this->validated('password');

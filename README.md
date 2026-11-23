@@ -96,7 +96,7 @@ registration form are regular users and must verify their email address.
 | --- | --- |
 | Run the PHP tests | `docker compose exec app php artisan test` |
 | PHP code style (Pint) | `docker compose exec app composer lint` (fix: `composer format`) |
-| PHP static analysis (Larastan, level 9) | `docker compose exec app composer analyse` |
+| PHP static analysis (Larastan, level 10) | `docker compose exec app composer analyse` |
 | JavaScript and Vue lint (ESLint) | `docker compose --profile dev run --rm node npm run lint` (fix: `npm run lint:fix`) |
 | JavaScript and Vue formatting (Prettier) | `docker compose --profile dev run --rm node npm run format:check` (fix: `npm run format`) |
 | Production build (Vite) | `docker compose --profile dev run --rm node npm run build` |
