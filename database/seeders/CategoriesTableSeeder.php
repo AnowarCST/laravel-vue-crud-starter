@@ -1,51 +1,28 @@
 <?php
 
-
 namespace Database\Seeders;
 
-
+use App\Models\Category;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
+/**
+ * Idempotent demo data: safe to run repeatedly, never deletes rows.
+ */
 class CategoriesTableSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     *
-     * @return void
-     */
-    public function run()
-    {
-        DB::table('categories')->truncate();
+    public const NAMES = [
+        'Electrical Vehicle/e-Power',
+        'Compact Car',
+        'Light Car',
+        'Minivan',
+        'Sports & Specialty',
+        'Sedan',
+    ];
 
-        DB::table('categories')->insert(
-            [
-                [
-                    'name' => 'Electrical Vehicle/e-Power',
-                    'description' => Str::words(50),
-                ],
-                [
-                    'name' => 'Compact Car',
-                    'description' => Str::words(50),
-                ],
-                [
-                    'name' => 'Light Car',
-                    'description' => Str::words(50),
-                ],
-                [
-                    'name' => 'Minivan',
-                    'description' => Str::words(50),
-                ],
-                [
-                    'name' => 'Sports & Specialty',
-                    'description' => Str::words(50),
-                ],
-                [
-                    'name' => 'Sedan',
-                    'description' => Str::words(50),
-                ],
-            ]
-        );
+    public function run(): void
+    {
+        foreach (self::NAMES as $name) {
+            Category::firstOrCreate(['name' => $name], ['description' => $name.' vehicles.']);
+        }
     }
 }

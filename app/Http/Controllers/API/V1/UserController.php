@@ -4,96 +4,62 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Requests\Users\UserRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Gate;
 
-
+/**
+ * Administrator-only account management (see App\Policies\UserPolicy).
+ * Authorization is always checked before an account is looked up so that
+ * non-administrators cannot probe which user ids exist.
+ */
 class UserController extends BaseController
 {
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        $this->middleware('auth:api');
-    }
-
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        if (!Gate::allows('isAdmin')) {
-            return $this->unauthorizedResponse();
-        }
-        // $this->authorize('isAdmin');
+        $this->authorize('viewAny', User::class);
 
-        $users = User::latest()->paginate(10);
-
-        return $this->sendResponse($users, 'Users list');
+        return $this->sendResponse(User::latest()->paginate(10), 'Users list');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\Users\UserRequest  $request
-     *
-     * @param $id
-     *
-     * @return \Illuminate\Http\Response
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(UserRequest $request)
     {
-        $user = User::create([
-            'name' => $request['name'],
-            'email' => $request['email'],
-            'password' => Hash::make($request['password']),
-            'type' => $request['type'],
-        ]);
+        $data = $request->validated();
+
+        $user = new User($request->safe()->only(['name', 'email', 'password']));
+        $user->forceFill(['type' => $data['type']])->save();
 
         return $this->sendResponse($user, 'User Created Successfully');
     }
 
-    /**
-     * Update the resource in storage
-     *
-     * @param  \App\Http\Requests\Users\UserRequest  $request
-     * @param $id
-     *
-     * @return \Illuminate\Http\Response
-     * @throws \Illuminate\Validation\ValidationException
-     */
+    public function show($id)
+    {
+        $this->authorize('viewAny', User::class);
+        $user = User::findOrFail($id);
+        $this->authorize('view', $user);
+
+        return $this->sendResponse($user, 'User Details');
+    }
+
     public function update(UserRequest $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = $request->target();
 
-        if (!empty($request->password)) {
-            $request->merge(['password' => Hash::make($request['password'])]);
+        $attributes = $request->safe()->only(['name', 'email']);
+        if (filled($request->validated('password'))) {
+            $attributes['password'] = $request->validated('password');
+        }
+        if ($request->has('type')) {
+            $attributes['type'] = $request->validated('type');
         }
 
-        $user->update($request->all());
+        $user->forceFill($attributes)->save();
 
         return $this->sendResponse($user, 'User Information has been updated');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy($id)
     {
-
-        $this->authorize('isAdmin');
-
+        $this->authorize('viewAny', User::class);
         $user = User::findOrFail($id);
-        // delete the user
+        $this->authorize('delete', $user);
 
         $user->delete();
 

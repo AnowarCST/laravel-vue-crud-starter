@@ -1,193 +1,143 @@
 <template>
-  <section class="content">
-    <div class="container-fluid">
-        <div class="row">
-
-          <div class="col-12">
-        
-            <div class="card" v-if="$gate.isAdmin()">
-              <div class="card-header">
-                <h3 class="card-title">Tag List</h3>
-
-                <div class="card-tools">
-                  
-                  <button type="button" class="btn btn-sm btn-primary" @click="newModal">
-                      <i class="fa fa-plus-square"></i>
-                      Add New
-                  </button>
-                </div>
-              </div>
-              <!-- /.card-header -->
-              <div class="card-body table-responsive p-0">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Name</th>
-                      <th>Created</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                     <tr v-for="tag in tags.data" :key="tag.id">
-
-                      <td>{{tag.id}}</td>
-                      <td class="text-capitalize">{{tag.name}}</td>
-                      <td>{{tag.created_at}}</td>
-                      <td>
-
-                        <a href="#" @click="editModal(tag)">
-                            <i class="fa fa-edit blue"></i>
-                        </a>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!-- /.card-body -->
-              <div class="card-footer">
-                  <pagination :data="tags" @pagination-change-page="getResults"></pagination>
-              </div>
-            </div>
-            <!-- /.card -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Tag list</h3>
+          <div class="card-tools">
+            <button type="button" class="btn btn-sm btn-primary" @click="openCreate">
+              <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> Add new
+            </button>
           </div>
         </div>
-
-
-        <div v-if="!$gate.isAdmin()">
-            <not-found></not-found>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Created</th>
+                <th scope="col" class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="tag in tags.data || []" :key="tag.id">
+                <td>{{ tag.id }}</td>
+                <td>{{ tag.name }}</td>
+                <td>{{ formatDate(tag.created_at) }}</td>
+                <td class="text-end text-nowrap">
+                  <button type="button" class="btn btn-sm btn-outline-primary me-1" :aria-label="`Edit ${tag.name}`" @click="openEdit(tag)">
+                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" :aria-label="`Delete ${tag.name}`" @click="remove(tag)">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="loaded && !(tags.data || []).length">
+                <td colspan="4" class="text-center text-secondary py-4">No tags yet.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <!-- Modal -->
-        <div class="modal fade" id="addNew" tabindex="-1" role="dialog" aria-labelledby="addNew" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" v-show="!editmode">Create New Tag</h5>
-                    <h5 class="modal-title" v-show="editmode">Update Tag</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-
-                <!-- <form @submit.prevent="createUser"> -->
-
-                <form @submit.prevent="editmode ? updateTag() : createTag()">
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Name</label>
-                            <input v-model="form.name" type="text" name="name"
-                                class="form-control" :class="{ 'is-invalid': form.errors.has('name') }">
-                            <has-error :form="form" field="name"></has-error>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button v-show="editmode" type="submit" class="btn btn-success">Update</button>
-                        <button v-show="!editmode" type="submit" class="btn btn-primary">Create</button>
-                    </div>
-                  </form>
-                </div>
-            </div>
+        <div class="card-footer clearfix">
+          <pagination :data="tags" @pagination-change-page="load" />
         </div>
+      </div>
     </div>
-  </section>
+
+    <div ref="modal" class="modal fade" tabindex="-1" aria-labelledby="tagModalTitle" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" novalidate @submit.prevent="save">
+          <div class="modal-header">
+            <h5 id="tagModalTitle" class="modal-title">{{ editMode ? 'Update tag' : 'Create new tag' }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label for="tag_name" class="form-label">Name</label>
+            <input id="tag_name" v-model="form.name" type="text" maxlength="191" class="form-control" :class="{ 'is-invalid': form.errors.has('name') }">
+            <has-error :form="form" field="name" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary" :disabled="form.busy">{{ editMode ? 'Update' : 'Create' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-    export default {
-        data () {
-            return {
-                editmode: false,
-                tags : {},
-                form: new Form({
-                    id : '',
-                    name: '',
-                })
+import axios from 'axios';
+import { Form } from '../../lib/Form';
+import { track } from '../../lib/progress';
+import { showModal, hideModal } from '../../bootstrap';
+import { confirmDelete, errorMessage, toastError, toastSuccess } from '../../lib/notify';
+
+export default {
+    data() {
+        return {
+            editMode: false,
+            loaded: false,
+            page: 1,
+            tags: {},
+            form: new Form({ id: '', name: '' }),
+        };
+    },
+    created() {
+        this.load();
+    },
+    beforeUnmount() {
+        hideModal(this.$refs.modal);
+    },
+    methods: {
+        async load(page = this.page) {
+            try {
+                const { data } = await track(axios.get('/api/tag', { params: { page } }));
+                this.tags = data.data || {};
+                this.page = this.tags.current_page || page;
+                if (!(this.tags.data || []).length && page > 1) return this.load(page - 1);
+            } catch (error) {
+                toastError(errorMessage(error, 'Unable to load tags.'));
+            } finally {
+                this.loaded = true;
             }
         },
-        methods: {
-
-            getResults(page = 1) {
-
-                  this.$Progress.start();
-                  
-                  axios.get('/api/tag?page=' + page).then(({ data }) => (this.tags = data.data));
-
-                  this.$Progress.finish();
-            },
-            updateTag(){
-                this.$Progress.start();
-                // console.log('Editing data');
-                this.form.put('/api/tag/'+this.form.id)
-                .then((response) => {
-                    // success
-                    $('#addNew').modal('hide');
-                    Toast.fire({
-                      icon: 'success',
-                      title: response.data.message
-                    });
-                    this.$Progress.finish();
-                        //  Fire.$emit('AfterCreate');
-
-                    this.loadTags();
-                })
-                .catch(() => {
-                    this.$Progress.fail();
-                });
-
-            },
-            editModal(tag){
-                this.editmode = true;
-                this.form.reset();
-                $('#addNew').modal('show');
-                this.form.fill(tag);
-            },
-            newModal(){
-                this.editmode = false;
-                this.form.reset();
-                $('#addNew').modal('show');
-            },
-
-            loadTags(){
-                if(this.$gate.isAdmin()){
-                    axios.get("/api/tag").then(({ data }) => (this.tags = data.data));
-                }
-            },
-            
-            createTag(){
-
-                this.form.post('/api/tag')
-                .then((response)=>{
-                    $('#addNew').modal('hide');
-
-                    Toast.fire({
-                            icon: 'success',
-                            title: response.data.message
-                    });
-
-                    this.$Progress.finish();
-                    this.loadTags();
-
-                })
-                .catch(()=>{
-
-                    Toast.fire({
-                        icon: 'error',
-                        title: 'Some error occured! Please try again'
-                    });
-                })
+        openCreate() {
+            this.editMode = false;
+            this.form.reset();
+            showModal(this.$refs.modal);
+        },
+        openEdit(tag) {
+            this.editMode = true;
+            this.form.reset();
+            this.form.fill(tag);
+            showModal(this.$refs.modal);
+        },
+        async save() {
+            const payload = { name: this.form.name };
+            try {
+                const response = this.editMode
+                    ? await track(this.form.put(`/api/tag/${this.form.id}`, payload))
+                    : await track(this.form.post('/api/tag', payload));
+                hideModal(this.$refs.modal);
+                toastSuccess(response.data.message);
+                this.load();
+            } catch (error) {
+                toastError(errorMessage(error));
             }
-
         },
-        mounted() {
-            console.log('Component mounted.')
+        async remove(tag) {
+            if (!(await confirmDelete(`tag "${tag.name}"`))) return;
+            try {
+                const response = await track(axios.delete(`/api/tag/${tag.id}`));
+                toastSuccess(response.data.message);
+                this.load();
+            } catch (error) {
+                toastError(errorMessage(error));
+            }
         },
-        created() {
-
-            this.$Progress.start();
-            this.loadTags();
-            this.$Progress.finish();
-        }
-    }
+    },
+};
 </script>

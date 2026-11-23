@@ -1,26 +1,52 @@
-# PHP
-# Test and package your PHP project.
-# Add steps that run tests, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/php
+# Azure Pipelines (legacy status check "AnowarCST.laravel-vue-crud-starter").
+#
+# GitHub Actions (.github/workflows/ci.yml) is the primary CI. This pipeline is
+# kept because the Azure Pipelines GitHub integration reports a required-looking
+# check on every PR; deleting the file would make that check fail instead of
+# disappearing. It runs a real backend check using the same pinned PHP 8.5
+# image as local development (docker/Dockerfile, target "dev"):
+# composer validate, install, audit, and the PHPUnit suite (SQLite in memory).
+#
+# To retire it: disable the pipeline in Azure DevOps / uninstall the Azure
+# Pipelines GitHub app, then delete this file.
 
 trigger:
-- master
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - "*"
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: ubuntu-24.04
 
 variables:
-  phpVersion: 7.3
+  DOCKER_BUILDKIT: "1"
 
 steps:
-- script: |
-    sudo update-alternatives --set php /usr/bin/php$(phpVersion)
-    sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
-    sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
-    sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
-    sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
-    php -version
-  displayName: 'Use PHP version $(phpVersion)'
+  - checkout: self
+    persistCredentials: false
 
-- script: composer install --no-interaction --prefer-dist
-  displayName: 'composer install'
+  - script: docker build --target dev --file docker/Dockerfile --tag ci-php:dev .
+    displayName: Build PHP 8.5 image (docker/Dockerfile, target dev)
+
+  - script: |
+      docker run --rm --user root \
+        --env COMPOSER_ALLOW_SUPERUSER=1 \
+        --volume "$(Build.SourcesDirectory)":/var/www/html \
+        --workdir /var/www/html \
+        --entrypoint sh \
+        ci-php:dev -euc '
+          php -v
+          composer validate --strict
+          composer install --no-interaction --no-progress --prefer-dist
+          composer audit --locked
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+          php artisan passport:keys --no-interaction
+          php artisan test
+        '
+    displayName: Composer validate/install/audit + PHPUnit

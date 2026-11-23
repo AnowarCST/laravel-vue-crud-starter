@@ -1,72 +1,85 @@
-version: '3.1'
-services:
+# Local development stack.
+#
+#   cp .env.example .env            # then set DB_PASSWORD / DB_ROOT_PASSWORD
+#   docker compose up -d            # app (http://localhost:8000) + MySQL
+#   docker compose --profile dev up node   # Vite dev server with HMR
+#
+# Nothing is published on public interfaces: ports bind to 127.0.0.1 only and
+# MySQL is not published at all (see docker-compose.db-port.yml to opt in).
+# This file is for development; production uses the `prod` image target.
 
-  #PHP Service
+name: laravel-vue-crud-starter
+
+services:
   app:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: vue-starter
-    restart: always
-    tty: true
-    environment:
-      SERVICE_NAME: vue-starter
-      SERVICE_TAGS: dev
-    working_dir: /var/www
+      target: dev
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+    image: laravel-vue-crud-starter-app:dev
+    working_dir: /var/www/html
     volumes:
-       - ./:/var/www
-       - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
-    networks:
-      - app-network
-
-  #Nginx Service
-  webserver:
-    image: nginx:alpine
-    container_name: vue-starter-webserver
-    restart: always
-    tty: true
+      - ./:/var/www/html
     ports:
-      - "8008:80"
-        #  - "4431:443"
-    volumes:
-      - ./:/var/www
-      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
-    networks:
-      - app-network
-
-  #MySQL Service
-  db:
-    image: mysql:8.0.17
-    container_name: vue-starter-db
-    command: --default-authentication-plugin=mysql_native_password
-    restart: always
-    tty: true
-    ports:
-      - "3307:3306"
-    environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_ROOT_PASSWORD: 123456
-      SERVICE_TAGS: dev
-      SERVICE_NAME: mysql
-    volumes:
-      - dbdata:/var/lib/mysql
-    networks:
-      - app-network
-
-  #adminer for db access
-  adminer:
-    image: adminer:latest
+      - "127.0.0.1:${APP_PORT:-8000}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  node:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: node-dev
+    image: laravel-vue-crud-starter-node:dev
+    profiles: [dev]
+    working_dir: /app
+    volumes:
+      - ./:/app
+      # Linux-native dependencies live in a volume, never in the host's node_modules.
+      - node_modules:/app/node_modules
     ports:
-      - 8080:8080
+      - "127.0.0.1:${VITE_PORT:-5173}:5173"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
-#Docker Networks
-networks:
-  app-network:
-    driver: bridge
+  db:
+    image: mysql:8.4.13
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME in .env (not root)}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set a strong DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set a separate strong DB_ROOT_PASSWORD in .env}
+    volumes:
+      - db_data:/var/lib/mysql
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping --host=127.0.0.1 --user=root --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
-#Volumes
 volumes:
-  dbdata:
-    driver: local 
-
+  db_data:
+  node_modules:

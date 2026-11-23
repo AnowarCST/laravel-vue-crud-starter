@@ -6,124 +6,71 @@ use App\Http\Requests\Products\ProductRequest;
 use App\Models\Product;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends BaseController
 {
-
-    protected $product = '';
-
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
-    public function __construct(Product $product)
-    {
-        $this->middleware('auth:api');
-        $this->product = $product;
-    }
-
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        $products = $this->product->latest()->with('category', 'tags')->paginate(10);
-
-        return $this->sendResponse($products, 'Product list');
+        return $this->sendResponse(Product::latest()->with('category', 'tags')->paginate(10), 'Product list');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  App\Http\Requests\Products\ProductRequest  $request
-     * @return \Illuminate\Http\Response
-     */
+    public function show($id)
+    {
+        return $this->sendResponse(Product::with('category', 'tags')->findOrFail($id), 'Product Details');
+    }
+
     public function store(ProductRequest $request)
     {
-        $product = $this->product->create([
-            'name' => $request->get('name'),
-            'description' => $request->get('description'),
-            'price' => $request->get('price'),
-            'category_id' => $request->get('category_id'),
-        ]);
+        $this->authorize('create', Product::class);
 
-        // update pivot table
-        $tag_ids = [];
-        foreach ($request->get('tags') as $tag) {
-            $existingtag = Tag::whereName($tag['text'])->first();
-            if ($existingtag) {
-                $tag_ids[] = $existingtag->id;
-            } else {
-                $newtag = Tag::create([
-                    'name' => $tag['text']
-                ]);
-                $tag_ids[] = $newtag->id;
-            }
-        }
-        $product->tags()->sync($tag_ids);
+        $product = DB::transaction(function () use ($request) {
+            $product = Product::create($request->safe()->except('tags'));
+            $this->syncTags($product, $request->validated('tags', []));
+
+            return $product;
+        });
 
         return $this->sendResponse($product, 'Product Created Successfully');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        $product = $this->product->with(['category', 'tags'])->findOrFail($id);
-
-        return $this->sendResponse($product, 'Product Details');
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Product  $product
-     * @return \Illuminate\Http\Response
-     */
     public function update(ProductRequest $request, $id)
     {
-        $product = $this->product->findOrFail($id);
+        $product = Product::findOrFail($id);
+        $this->authorize('update', $product);
+        $previousPhoto = $product->photo;
 
-        $product->update($request->all());
-
-        // update pivot table
-        $tag_ids = [];
-        foreach ($request->get('tags') as $tag) {
-            $existingtag = Tag::whereName($tag['text'])->first();
-            if ($existingtag) {
-                $tag_ids[] = $existingtag->id;
-            } else {
-                $newtag = Tag::create([
-                    'name' => $tag['text']
-                ]);
-                $tag_ids[] = $newtag->id;
+        DB::transaction(function () use ($request, $product) {
+            $product->update($request->safe()->except('tags'));
+            if ($request->has('tags')) {
+                $this->syncTags($product, $request->validated('tags', []));
             }
+        });
+
+        // Remove the replaced upload, but only files this API created.
+        if ($previousPhoto !== $product->photo && is_string($previousPhoto)
+            && preg_match(ProductRequest::UPLOADED_PHOTO_PATTERN, $previousPhoto)
+            && ! Product::withTrashed()->where('photo', $previousPhoto)->exists()) {
+            Storage::disk('public')->delete($previousPhoto);
         }
-        $product->tags()->sync($tag_ids);
 
         return $this->sendResponse($product, 'Product Information has been updated');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @return \Illuminate\Http\Response
-     */
+    private function syncTags(Product $product, array $tags): void
+    {
+        $ids = [];
+        foreach ($tags as $tag) {
+            $ids[] = Tag::firstOrCreate(['name' => $tag['text']])->id;
+        }
+        $product->tags()->sync($ids);
+    }
+
     public function destroy($id)
     {
-
-        $this->authorize('isAdmin');
-
-        $product = $this->product->findOrFail($id);
-
+        $product = Product::findOrFail($id);
+        $this->authorize('delete', $product);
         $product->delete();
 
         return $this->sendResponse($product, 'Product has been Deleted');
@@ -131,9 +78,21 @@ class ProductController extends BaseController
 
     public function upload(Request $request)
     {
-        $fileName = time() . '.' . $request->file->getClientOriginalExtension();
-        $request->file->move(public_path('upload'), $fileName);
+        $this->authorize('create', Product::class);
 
-        return response()->json(['success' => true]);
+        $request->validate([
+            'file' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp',
+                'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=4096,max_height=4096'],
+        ]);
+
+        // store() names the file Str::random(40) plus an extension guessed from
+        // the detected MIME type (never the client-supplied name/extension),
+        // e.g. uploads/<40 alphanumerics>.png on the "public" disk.
+        $path = $request->file('file')->store('uploads', 'public');
+
+        return $this->sendResponse([
+            'path' => $path,
+            'url' => Storage::disk('public')->url($path),
+        ], 'Image uploaded');
     }
 }

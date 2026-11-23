@@ -1,0 +1,35 @@
+# Keep the build context small and free of secrets / host build output.
+.git
+.github
+.idea
+.vscode
+.DS_Store
+*.code-workspace
+.env
+.env.*
+!.env.example
+.phpunit.cache
+.phpunit.result.cache
+
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+public/upload
+
+# Runtime state from local development must never be baked into an image.
+bootstrap/cache/*.php
+storage/*.key
+storage/logs/*
+storage/framework/*
+storage/app/public/*
+storage/app/private/*
+!storage/app/public/.gitignore
+reports
+coverage
+
+docker-compose*.yml
+azure-pipelines.yml
+CODEX_INSTRUCTIONS.md
+SECURITY_REFACTOR_PLAN.md
