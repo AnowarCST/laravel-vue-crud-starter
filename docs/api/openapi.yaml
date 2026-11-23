@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Laravel Vue CRUD Starter API
-  version: 1.0.1
+  version: 2.0.0
   summary: JSON API used by the dashboard and by API clients.
   description: |
     The JSON API under `/api`. The dashboard (the Vue single-page application)
@@ -37,6 +37,8 @@ info:
       `{"success": true, "data": ..., "message": "..."}`.
     - List endpoints return a Laravel length-aware paginator in `data`
       (10 items per page, newest first, `?page=` selects the page).
+      `GET /api/product` also accepts search, filter, sort and `per_page`
+      parameters, and rejects invalid values with `422`.
     - Errors have a `message` field. Validation errors (`422`) also have an
       `errors` object that maps each field to a list of messages.
     - An account whose email address is not verified receives `403` with the
@@ -99,7 +101,7 @@ paths:
                 properties:
                   version:
                     type: string
-                    examples: ['1.0.1']
+                    examples: ['2.0.0']
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -225,8 +227,78 @@ paths:
       tags: [Products]
       operationId: listProducts
       summary: List products
-      description: Products with their category and tags, newest first, 10 per page. Soft-deleted products are not included.
+      description: |
+        Products with their category and tags. Soft-deleted products are not
+        included. Without parameters the list is sorted newest first, 10 per
+        page.
+
+        Every parameter is optional, and filters are combined (a product must
+        match all of them). An empty value (for example `?search=`) is the
+        same as leaving the parameter out. Any other invalid value, such as an
+        unknown `sort` or `per_page=51`, is rejected with `422`; it is never
+        ignored. The page links in the response (`first_page_url`,
+        `next_page_url`, `links` and so on) keep the query parameters.
       parameters:
+        - name: search
+          in: query
+          required: false
+          description: |
+            Case-insensitive text that must appear in the product's name, SKU
+            or description. `%` and `_` are matched literally.
+          schema:
+            type: string
+            maxLength: 100
+          example: mug
+        - name: category_id
+          in: query
+          required: false
+          description: Only products in this category. An id that does not exist returns an empty list.
+          schema:
+            type: integer
+            minimum: 1
+        - name: tag
+          in: query
+          required: false
+          description: Only products that have the tag with this id.
+          schema:
+            type: integer
+            minimum: 1
+        - name: status
+          in: query
+          required: false
+          description: Only products with this status.
+          schema:
+            $ref: '#/components/schemas/ProductStatus'
+        - name: stock
+          in: query
+          required: false
+          description: |
+            Only products at this stock level: `in` is 1 unit or more, `low` is
+            1 to 5 units, and `out` is 0 units.
+          schema:
+            type: string
+            enum: [in, low, out]
+        - name: sort
+          in: query
+          required: false
+          description: |
+            Sort order. `newest` and `oldest` sort by creation time; `name`,
+            `price` and `stock` sort in ascending order, and a leading `-`
+            sorts in descending order. Products with equal values are ordered
+            by id in the same direction.
+          schema:
+            type: string
+            enum: [newest, oldest, name, '-name', price, '-price', stock, '-stock']
+            default: newest
+        - name: per_page
+          in: query
+          required: false
+          description: Products per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
         - $ref: '#/components/parameters/Page'
       responses:
         '200':
@@ -244,6 +316,19 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/EmailNotVerified'
+        '422':
+          description: A query parameter has an invalid value.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                message: The selected sort is invalid. (and 1 more error)
+                errors:
+                  sort:
+                    - The selected sort is invalid.
+                  per_page:
+                    - The per page field must not be greater than 50.
         '429':
           $ref: '#/components/responses/TooManyRequests'
     post:
@@ -251,16 +336,21 @@ paths:
       operationId: createProduct
       summary: Create a product
       description: |
-        Upload the image first with `POST /api/product/upload` and send the
-        returned `path` as `photo`. Tags are matched by name and created if
-        they do not exist yet. The response does not include the `category`
-        and `tags` relations; fetch the product to get them.
+        `sku` is required and must be unique. It is trimmed and stored in upper
+        case (`ab-12` is saved as `AB-12`). `stock` defaults to `0` and
+        `status` to `active`. Upload the image first with
+        `POST /api/product/upload` and send the returned `path` as `photo`.
+        Tags are matched by name and created if they do not exist yet.
+
+        The response contains the saved fields only: it does not include the
+        `category` and `tags` relations, and it has no `photo` field when no
+        photo was sent. Fetch the product to get the full record.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductInput'
+              $ref: '#/components/schemas/ProductCreateInput'
       responses:
         '200':
           description: The created product.
@@ -340,6 +430,44 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /product/stats:
+    get:
+      tags: [Products]
+      operationId: getProductStats
+      summary: Get product counts
+      description: |
+        Product counts for the dashboard. Soft-deleted products are not
+        counted. `low_stock` counts products with 1 to 5 units, and
+        `out_of_stock` counts products with 0 units, whatever their status.
+      responses:
+        '200':
+          description: Product counts.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProductStats'
+              example:
+                success: true
+                data:
+                  total: 14
+                  active: 12
+                  draft: 1
+                  archived: 1
+                  low_stock: 3
+                  out_of_stock: 1
+                message: Product statistics
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/EmailNotVerified'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /product/{product}:
     parameters:
       - $ref: '#/components/parameters/ProductId'
@@ -368,13 +496,17 @@ paths:
       operationId: updateProduct
       summary: Update a product
       description: |
-        `PATCH` is accepted as well and behaves the same way. All fields except
-        `tags` and `photo` are required. If `tags` is sent, the product's tags
-        are replaced by that list; if it is left out, the tags do not change.
-        `photo` must be a path returned by `POST /api/product/upload`, or the
-        product's current `photo` value. When the photo is replaced, the old
-        uploaded file is deleted if no other product uses it. The response
-        does not include the `category` and `tags` relations.
+        `PATCH` is accepted as well and behaves the same way. `category_id`,
+        `name`, `description` and `price` are required. `sku`, `stock`,
+        `status`, `tags` and `photo` are optional: a field that is left out
+        does not change. If `sku` is sent, it must be a valid, unique SKU (it
+        cannot be removed); products created before SKUs existed have none
+        until one is set. If `tags` is sent, the product's tags are replaced
+        by that list. `photo` must be a path returned by
+        `POST /api/product/upload`, or the product's current `photo` value.
+        When the photo is replaced, the old uploaded file is deleted if no
+        other product uses it. The response does not include the `category`
+        and `tags` relations.
       requestBody:
         required: true
         content:
@@ -936,7 +1068,7 @@ components:
       name: page
       in: query
       required: false
-      description: Page number (10 items per page).
+      description: Page number.
       schema:
         type: integer
         minimum: 1
@@ -1280,28 +1412,73 @@ components:
               type: integer
             tag_id:
               type: integer
+    ProductStatus:
+      type: string
+      enum: [active, draft, archived]
+    ProductStats:
+      type: object
+      required: [total, active, draft, archived, low_stock, out_of_stock]
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: All products that are not deleted.
+        active:
+          type: integer
+          minimum: 0
+        draft:
+          type: integer
+          minimum: 0
+        archived:
+          type: integer
+          minimum: 0
+        low_stock:
+          type: integer
+          minimum: 0
+          description: Products with 1 to 5 units in stock.
+        out_of_stock:
+          type: integer
+          minimum: 0
+          description: Products with 0 units in stock.
     Product:
       type: object
-      required: [id, name, description, price, category_id, photo, photo_url, created_at, updated_at]
+      description: |
+        `photo` and `deleted_at` are always present when reading products. The
+        create response contains only the saved fields, so it has no
+        `deleted_at`, and no `photo` unless one was sent.
+      required: [id, name, sku, description, price, stock, status, category_id, photo_url, created_at, updated_at]
       properties:
         id:
           type: integer
         name:
           type: string
+        sku:
+          type: [string, 'null']
+          pattern: '^[A-Z0-9-]+$'
+          maxLength: 64
+          description: Unique stock-keeping unit in upper case. Null only for products created before SKUs existed.
+          examples: ['HK-3001']
         description:
           type: [string, 'null']
         price:
-          type: [string, number]
-          description: Stored as a string. Create and update responses echo the value as it was sent; reads return a string such as "12.5".
-          examples: ['12.5']
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+          description: The price as a string with exactly two decimal places (the column is `decimal(10,2)`), in every response, whether it was sent as a number or a string.
+          examples: ['34.00', '12.50']
+        stock:
+          type: integer
+          minimum: 0
+          description: Units in stock. 1 to 5 units counts as low stock.
+        status:
+          $ref: '#/components/schemas/ProductStatus'
         category_id:
           type: integer
         photo:
           type: [string, 'null']
-          description: Path of the image on the `public` disk (for example `uploads/<random>.png`), or a legacy path under `public/` for demo data.
+          description: Path of the image, either an upload on the `public` disk (for example `uploads/<random>.png`) or a bundled demo image (for example `images/products/ceramic-coffee-mug.webp`).
         photo_url:
           type: [string, 'null']
-          description: Browser URL of the image, or null when the product has no photo.
+          description: Full URL of the image (under `/storage/uploads/` for uploads, under `/images/` for demo images), or null when the product has no photo.
         created_at:
           $ref: '#/components/schemas/Timestamp'
         updated_at:
@@ -1323,6 +1500,7 @@ components:
             $ref: '#/components/schemas/ProductTag'
     ProductInput:
       type: object
+      description: Fields for updating a product. See `ProductCreateInput` for creating one.
       required: [category_id, name, description, price]
       properties:
         category_id:
@@ -1331,13 +1509,32 @@ components:
         name:
           type: string
           maxLength: 191
+        sku:
+          type: string
+          maxLength: 64
+          description: |
+            Letters, digits and hyphens only, unique across products (deleted
+            products included). Leading and trailing spaces are removed and the
+            value is converted to upper case before it is checked and saved.
+          examples: ['HK-3001']
         description:
           type: string
           maxLength: 1000
         price:
-          type: number
+          type: [number, string]
           minimum: 0
-          maximum: 999999999.99
+          maximum: 99999999.99
+          description: A number from 0 to 99999999.99 with at most two decimal places. A numeric string such as `"34.90"` is accepted too.
+          examples: [34.9]
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          description: Units in stock. Defaults to `0` when creating a product.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/ProductStatus'
+          description: Defaults to `active` when creating a product.
         tags:
           type: array
           maxItems: 50
@@ -1350,13 +1547,19 @@ components:
                 type: string
                 maxLength: 191
           examples:
-            - - text: Sedan
-              - text: Electric
+            - - text: Gift idea
+              - text: Bestseller
         photo:
           type: [string, 'null']
           maxLength: 191
           description: A `path` returned by `POST /api/product/upload` (or, on update, the product's current value).
           examples: ['uploads/3hX0aZbQe1c9TfLwVq2Kj7Rr5Ns8Pm4Ud6Yo0Gi1.png']
+    ProductCreateInput:
+      description: Fields for creating a product. The same as `ProductInput`, except that `sku` is required.
+      allOf:
+        - $ref: '#/components/schemas/ProductInput'
+        - type: object
+          required: [sku]
     ProductResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
