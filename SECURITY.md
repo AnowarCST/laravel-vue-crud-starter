@@ -75,7 +75,9 @@ reported to those projects directly.
   makes the `laravel_token` API cookies issued before the change invalid,
   and signs out their other browser sessions. The browser that changed its
   own password on the Profile page stays signed in, under a new session id
-  and with a new API cookie.
+  and with a new API cookie, until that session expires. Its "Remember me"
+  cookie stops working, because the change rotates the remember token, so
+  after the session expires it has to sign in again.
 
 ### File uploads
 

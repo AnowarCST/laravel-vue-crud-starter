@@ -52,7 +52,11 @@ final class KeepSessionAfterPasswordChange
     {
         $user = $request->user('api');
 
-        if (! $user instanceof User || ! $user->token() instanceof TransientToken) {
+        // Only a browser that sent its session cookie has a session to keep.
+        // Without one, starting a session would only create an empty record.
+        if (! $user instanceof User
+            || ! $user->token() instanceof TransientToken
+            || ! $request->cookies->has(config()->string('session.cookie'))) {
             /** @var Response */
             return $next($request);
         }

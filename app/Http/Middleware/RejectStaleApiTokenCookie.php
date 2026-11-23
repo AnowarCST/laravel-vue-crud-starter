@@ -20,8 +20,13 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * It runs before authentication (see bootstrap/app.php) and decodes the
  * cookie the way Passport's TokenGuard does. A cookie that cannot be decoded
- * is left alone for the guard to reject. Requests with a bearer token are not
- * touched: the guard ignores the cookie for them, and access tokens are
+ * is left alone for the guard to reject.
+ *
+ * The check also runs when the request carries a bearer token. The guard
+ * normally ignores the cookie in that case, but if the bearer token is
+ * invalid the guard clears the Authorization header, and a second call to
+ * the guard in the same request would then fall back to the cookie. Removing
+ * a stale cookie here keeps that path closed. Access tokens themselves are
  * revoked in the database when the password changes (User::booted()).
  */
 final class RejectStaleApiTokenCookie
@@ -35,7 +40,7 @@ final class RejectStaleApiTokenCookie
     {
         $cookie = $request->cookies->get(Passport::cookie());
 
-        if (is_string($cookie) && ! $request->bearerToken()) {
+        if (is_string($cookie)) {
             $claims = $this->decode($cookie);
 
             if ($claims !== null && ! $this->hasCurrentPasswordClaim($claims)) {

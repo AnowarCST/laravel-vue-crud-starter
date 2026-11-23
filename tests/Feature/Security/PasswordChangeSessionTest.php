@@ -6,6 +6,7 @@ use App\Models\User;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Laravel\Passport\ApiTokenCookieFactory;
 use Laravel\Passport\ClientRepository;
@@ -129,6 +130,48 @@ class PasswordChangeSessionTest extends TestCase
         $this->withCredentials()->withCookie(Passport::cookie(), $other['token'])
             ->withToken($user->createToken('cli')->accessToken)
             ->getJson('/api/profile')->assertOk()->assertJsonPath('data.id', $user->id);
+    }
+
+    public function test_a_stale_api_cookie_is_removed_even_when_a_bearer_token_is_sent(): void
+    {
+        // When the bearer token is invalid, Passport's guard clears the
+        // Authorization header, so a second call to the guard in the same
+        // request falls back to the cookie. The stale cookie must already be
+        // gone by then.
+        // Under /api/: the SPA catch-all route in routes/web.php excludes it.
+        Route::middleware('api')->get('/api/_test/api-user-twice', fn (): array => [
+            'first' => auth('api')->id(),
+            'second' => auth('api')->id(),
+        ]);
+        $user = User::factory()->create();
+        $other = $this->signIn($user);
+        $this->changePasswordFrom($this->signIn($user))->assertOk();
+
+        $this->newBrowserRequest();
+        $this->withCredentials()
+            ->withCookie(Passport::cookie(), $other['token'])
+            ->withHeader('X-CSRF-TOKEN', $other['csrf'])
+            ->withToken('not-a-valid-token')
+            ->getJson('/api/_test/api-user-twice')
+            ->assertOk()
+            ->assertExactJson(['first' => null, 'second' => null]);
+    }
+
+    public function test_a_change_without_a_session_cookie_does_not_start_a_session(): void
+    {
+        $browser = $this->signIn(User::factory()->create());
+
+        $this->newBrowserRequest();
+        $this->withCredentials()
+            ->withCookie(Passport::cookie(), $browser['token'])
+            ->withHeader('X-CSRF-TOKEN', $browser['csrf'])
+            ->postJson('/api/change-password', [
+                'current_password' => UserFactory::PASSWORD,
+                'new_password' => self::NEW_PASSWORD,
+                'confirm_password' => self::NEW_PASSWORD,
+            ])
+            ->assertOk()
+            ->assertCookieMissing($this->sessionCookie());
     }
 
     /**

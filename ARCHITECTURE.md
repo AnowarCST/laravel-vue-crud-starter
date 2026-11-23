@@ -264,8 +264,14 @@ Details and operational advice are in [SECURITY.md](SECURITY.md).
   are signed out when they next load a page. The session that changed its
   own password on the Profile page stays signed in under a new session id:
   `KeepSessionAfterPasswordChange` stores the new password hash in it and
-  sends a fresh `laravel_token` cookie. API cookies issued before the change
-  are rejected (`RejectStaleApiTokenCookie`).
+  sends a fresh `laravel_token` cookie. It only does this when the browser
+  sent its session cookie, so it never creates empty sessions. That
+  browser's "Remember me" cookie stops working (the remember token was
+  rotated), so it stays signed in until its session expires. API cookies
+  issued before the change are rejected (`RejectStaleApiTokenCookie`), also
+  when the request carries a bearer token, and
+  `tests/Feature/Security/ApiGuardMiddlewareTest.php` fails if a route uses
+  the `api` guard without that middleware.
   Deleting an account also revokes its tokens. The forgot-password form
   answers the same way whether or not the email exists.
 - **Uploads.** `POST /api/product/upload` accepts JPEG, PNG and WebP images
