@@ -1,32 +1,19 @@
 <?php
 
-
 namespace Database\Seeders;
 
+use App\Models\Tag;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
+/**
+ * Idempotent demo data: safe to run repeatedly, never deletes rows.
+ */
 class TagsTableSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     *
-     * @return void
-     */
-    public function run()
+    public function run(): void
     {
-        DB::table('tags')->truncate();
-
-        DB::table('tags')->insert(
-            [
-                [
-                    'name' => 'Tag 1'
-                ],
-                [
-                    'name' => 'Tag 2'
-                ],
-            ]
-        );
+        foreach (['Tag 1', 'Tag 2'] as $name) {
+            Tag::firstOrCreate(['name' => $name]);
+        }
     }
 }

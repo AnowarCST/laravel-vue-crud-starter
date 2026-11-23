@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Rules\PasswordByteLength;
 use Illuminate\Foundation\Auth\ResetsPasswords;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ResetPasswordController extends Controller
 {
@@ -12,18 +15,42 @@ class ResetPasswordController extends Controller
     | Password Reset Controller
     |--------------------------------------------------------------------------
     |
-    | This controller is responsible for handling password reset requests
-    | and uses a simple trait to include this behavior. You're free to
-    | explore this trait and override any methods you wish to tweak.
+    | Saving the new password through the User model rotates the remember
+    | token and revokes every OAuth token issued to the account.
     |
     */
 
     use ResetsPasswords;
 
+    protected $redirectTo = '/dashboard';
+
+    public function __construct()
+    {
+        $this->middleware('throttle:password-reset')->only('reset');
+    }
+
+    protected function rules(): array
+    {
+        return [
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed', new PasswordByteLength],
+        ];
+    }
+
     /**
-     * Where to redirect users after resetting their password.
-     *
-     * @var string
+     * Same message for unknown emails and invalid/expired tokens.
      */
-    protected $redirectTo = '/home';
+    protected function sendResetFailedResponse(Request $request, $response)
+    {
+        $message = __('This password reset link is invalid or has expired.');
+
+        if ($request->wantsJson()) {
+            throw ValidationException::withMessages(['email' => [$message]]);
+        }
+
+        return redirect()->back()
+            ->withInput($request->only('email'))
+            ->withErrors(['email' => $message]);
+    }
 }

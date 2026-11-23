@@ -4,176 +4,82 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserTest extends TestCase
 {
-    use WithFaker;
+    use RefreshDatabase;
 
-    protected function setUp(): void
+    public function test_admin_can_manage_accounts_and_passwords_are_hashed(): void
     {
-        parent::setUp();
+        $admin = User::factory()->create(['type' => 'admin']);
+        $this->actingAs($admin, 'api')->getJson('/api/user')->assertOk()->assertJsonPath('success', true);
+        $this->postJson('/api/user', [
+            'name' => 'New User', 'email' => 'new@example.com',
+            'password' => 'Unique-password-123!', 'type' => 'user',
+        ])->assertOk();
+        $user = User::where('email', 'new@example.com')->firstOrFail();
+        $this->assertTrue(Hash::check('Unique-password-123!', $user->password));
+        $this->getJson('/api/user/'.$user->id)->assertOk()->assertJsonMissingPath('data.password');
+        $this->putJson('/api/user/'.$user->id, ['name' => 'Updated', 'email' => $user->email])
+            ->assertOk()->assertJsonPath('data.name', 'Updated');
+        $this->patchJson('/api/user/'.$user->id, ['password' => 'Replacement-password-123!'])
+            ->assertOk();
+        $this->assertTrue(Hash::check('Replacement-password-123!', $user->fresh()->password));
+        $this->deleteJson('/api/user/'.$user->id)->assertOk();
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
     }
 
-    /**
-     * Test User List for Admin
-     *
-     * @return void
-     */
-    public function testUserListForAdmin()
+    public function test_non_admin_cannot_list_read_create_update_or_delete_accounts(): void
     {
         $user = User::factory()->create();
-
-        $response = $this->actingAs($user, 'api')
-            ->getJson('/api/user');
-
-        $response
-            ->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'data' => true,
-            ]);
+        $victim = User::factory()->create(['type' => 'admin']);
+        $this->actingAs($user, 'api')->getJson('/api/user')->assertForbidden();
+        $this->getJson('/api/user/'.$victim->id)->assertForbidden();
+        $this->postJson('/api/user', [
+            'name' => 'Attacker', 'email' => 'attacker@example.com',
+            'password' => 'Attacker-password-123!', 'type' => 'admin',
+        ])->assertForbidden();
+        $this->putJson('/api/user/'.$victim->id, ['password' => 'Attacker-password-123!'])
+            ->assertForbidden();
+        $this->patchJson('/api/user/'.$victim->id, ['email' => 'attacker@example.com'])
+            ->assertForbidden();
+        $this->putJson('/api/user/'.$user->id, ['type' => 'admin'])->assertForbidden();
+        $this->deleteJson('/api/user/'.$victim->id)->assertForbidden();
+        $this->assertSame('user', $user->fresh()->type);
+        $this->assertTrue(Hash::check('Test-password-123!', $victim->fresh()->password));
+        $this->assertDatabaseMissing('users', ['email' => 'attacker@example.com']);
     }
 
-    /**
-     * Test User List for user type
-     *
-     * @return void
-     */
-    public function testUserListForStandardUser()
+    public function test_duplicate_email_cannot_be_bypassed_using_body_id(): void
     {
-        $user = User::factory()->create([
-            'type' => 'user',
-        ]);
-
-        $response = $this->actingAs($user, 'api')
-            ->getJson('/api/user');
-
-        $response
-            ->assertStatus(403)
-            ->assertJson([
-                'success' => false
-            ]);
+        $admin = User::factory()->create(['type' => 'admin']);
+        $victim = User::factory()->create();
+        $this->actingAs($admin, 'api')->putJson('/api/user/'.$admin->id, [
+            'id' => $victim->id, 'email' => $victim->email,
+        ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
-    /**
-     * Store user
-     *
-     * @return void
-     */
-    public function testStoreUser()
+    public function test_admin_updates_validate_passwords_and_ignore_unvalidated_fields(): void
     {
-        $user = User::factory()->create();
-
-        $data = [
-            'name' => $this->faker->name,
-            'email' => $this->faker->unique()->safeEmail,
-            'password' => bcrypt(123456), // password
-            'type' => 'user',
-        ];
-
-        $response = $this->actingAs($user, 'api')
-            ->postJson('/api/user', $data);
-
-        $response
-            ->assertStatus(200)
-            ->assertJson([
-                'success' => true
-            ]);
+        $admin = User::factory()->create(['type' => 'admin']);
+        $user = User::factory()->create(['email_verified_at' => null]);
+        $this->actingAs($admin, 'api')->putJson('/api/user/'.$user->id, ['password' => 'short'])
+            ->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->putJson('/api/user/'.$user->id, ['password' => str_repeat('🔐', 30)])
+            ->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->putJson('/api/user/'.$user->id, ['name' => 'Updated', 'email_verified_at' => now()->toISOString()])
+            ->assertOk();
+        $this->assertNull($user->fresh()->email_verified_at);
+        $this->assertTrue(Hash::check('Test-password-123!', $user->fresh()->password));
     }
 
-    /**
-     * Store user validation errors
-     *
-     * @return void
-     */
-    public function testStoreUserValidationError()
+    public function test_guests_cannot_manage_accounts(): void
     {
-        $user = User::factory()->create();
-
-        $data = [
-            'name' => $this->faker->name,
-            'type' => 'admin',
-        ];
-
-        $response = $this->actingAs($user, 'api')
-            ->postJson('/api/user', $data);
-
-        $response->assertStatus(422);
-    }
-
-    /**
-     * Update user
-     *
-     * @return void
-     */
-    public function testUpdateUser()
-    {
-        $user = User::factory()->create();
-
-        $data = [
-            'name' => $this->faker->name,
-            'type' => 'user'
-        ];
-
-        $response = $this->actingAs($user, 'api')
-            ->putJson('/api/user/' . $user->id, $data);
-        $response
-            ->assertStatus(200)
-            ->assertJson([
-                'success' => true
-            ]);
-    }
-
-    /**
-     * Store user validation errors
-     *
-     * @return void
-     */
-    public function testUpdateUserValidationError()
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user, 'api')
-            ->putJson('/api/user/' . $user->id, ['email' => 'Invalid@email com']);
-
-        $response->assertStatus(422);
-    }
-
-
-    /**
-     * Delete User
-     *
-     * @return void
-     */
-    public function testDeleteUser()
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user, 'api')
-            ->deleteJson('/api/user/' . $user->id);
-
-        $response->assertStatus(200)
-            ->assertJson([
-                'success' => true
-            ]);
-    }
-
-    /**
-     * Delete User by Non-Admin User
-     *
-     * @return void
-     */
-    public function testDeleteUserForNonAdminUser()
-    {
-        $user = User::factory()->create([
-            'type' => 'user',
-        ]);
-
-        $response = $this->actingAs($user, 'api')
-            ->deleteJson('/api/user/' . $user->id);
-
-        $response->assertStatus(403);
+        $this->getJson('/api/user')->assertUnauthorized();
+        $this->postJson('/api/user', [])->assertUnauthorized();
+        $this->putJson('/api/user/1', ['type' => 'admin'])->assertUnauthorized();
+        $this->deleteJson('/api/user/1')->assertUnauthorized();
     }
 }

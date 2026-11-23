@@ -1,43 +1,36 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\API\V1\CategoryController;
+use App\Http\Controllers\API\V1\ProductController;
+use App\Http\Controllers\API\V1\ProfileController;
+use App\Http\Controllers\API\V1\TagController;
+use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes (prefix /api, "api" middleware group incl. throttle:api)
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
+| Every route except "version" requires the Passport "api" guard, which
+| accepts bearer tokens and the SPA's laravel_token cookie + X-CSRF-TOKEN.
 |
 */
 
-Route::get('version', function () {
-    return response()->json(['version' => config('app.version')]);
-});
+Route::get('version', fn () => response()->json(['version' => config('app.version')]));
 
-
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    Log::debug('User:' . serialize($request->user()));
-    return $request->user();
-});
-
-
-Route::namespace('App\\Http\\Controllers\\API\V1')->group(function () {
-    Route::get('profile', 'ProfileController@profile');
-    Route::put('profile', 'ProfileController@updateProfile');
-    Route::post('change-password', 'ProfileController@changePassword');
-    Route::get('tag/list', 'TagController@list');
-    Route::get('category/list', 'CategoryController@list');
-    Route::post('product/upload', 'ProductController@upload');
+Route::middleware('auth:api')->group(function () {
+    Route::get('profile', [ProfileController::class, 'profile']);
+    Route::put('profile', [ProfileController::class, 'updateProfile']);
+    Route::post('change-password', [ProfileController::class, 'changePassword']);
+    Route::get('tag/list', [TagController::class, 'list']);
+    Route::get('category/list', [CategoryController::class, 'list']);
+    Route::post('product/upload', [ProductController::class, 'upload']);
 
     Route::apiResources([
-        'user' => 'UserController',
-        'product' => 'ProductController',
-        'category' => 'CategoryController',
-        'tag' => 'TagController',
+        'user' => UserController::class,
+        'product' => ProductController::class,
+        'category' => CategoryController::class,
+        'tag' => TagController::class,
     ]);
 });

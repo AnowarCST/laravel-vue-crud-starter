@@ -7,29 +7,39 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
+/**
+ * Test-only factory. Never used by the database seeders, so no account with
+ * this well-known password is ever created outside the test suite.
+ *
+ * @extends Factory<User>
+ */
 class UserFactory extends Factory
 {
-    /**
-     * The name of the factory's corresponding model.
-     *
-     * @var string
-     */
     protected $model = User::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array
-     */
-    public function definition()
+    public const PASSWORD = 'Test-password-123!';
+
+    protected static ?string $passwordHash = null;
+
+    public function definition(): array
     {
         return [
-            'name' => $this->faker->name,
-            'email' => $this->faker->unique()->safeEmail,
+            'name' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => Hash::make('123456'), // password
+            'password' => static::$passwordHash ??= Hash::make(self::PASSWORD),
             'remember_token' => Str::random(10),
-            'type' => 'admin',
+            'type' => User::TYPE_USER,
         ];
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn () => ['type' => User::TYPE_ADMIN]);
+    }
+
+    public function unverified(): static
+    {
+        return $this->state(fn () => ['email_verified_at' => null]);
     }
 }

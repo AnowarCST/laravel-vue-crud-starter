@@ -1,31 +1,18 @@
 <?php
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
-
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/', 'welcome');
 
+// /login, /logout, /register, /password/* and /email/* (verification).
 Auth::routes(['verify' => true]);
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Post-login landing URL used by laravel/ui; the SPA lives at /dashboard.
+Route::get('/home', fn () => redirect('/dashboard'))->name('home');
 
-Route::get('home', function () {
-    return redirect('/dashboard');
-});
-
-Route::get('/{vue_capture?}', function () {
-    return view('home');
-})->where('vue_capture', '[\/\w\.-]*')->middleware('auth');
+// Vue SPA catch-all (must stay last). API/OAuth paths are excluded so unknown
+// endpoints there return JSON 404s instead of the SPA shell / login redirect.
+Route::view('/{vue_capture?}', 'home')
+    ->where('vue_capture', '(?!(?:api|oauth)(?:/|$))[\/\w\.-]*')
+    ->middleware('auth');

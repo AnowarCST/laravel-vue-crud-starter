@@ -2,33 +2,25 @@
 
 namespace Database\Factories;
 
-
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-
+/**
+ * @extends Factory<Product>
+ */
 class ProductFactory extends Factory
 {
-    /**
-     * The name of the factory's corresponding model.
-     *
-     * @var string
-     */
     protected $model = Product::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array
-     */
-    public function definition()
+    public function definition(): array
     {
         return [
-            'name' => $this->faker->word,
-            'description' => $this->faker->text,
-            'price' => $this->faker->numberBetween($min = 100000, $max = 900000),
-            'category_id' => 5,
-            'photo' => 'images/cars/cima_1912_top_01.jpg.ximg.l_full_m.smart.jpg',
+            'name' => fake()->word(),
+            'description' => fake()->text(),
+            'price' => fake()->numberBetween(100000, 900000),
+            'category_id' => Category::factory(),
+            'photo' => null,
         ];
     }
 }
