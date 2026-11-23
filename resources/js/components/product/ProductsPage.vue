@@ -12,23 +12,118 @@
                         </button>
                     </div>
                 </div>
+                <form class="card-body border-bottom" role="search" aria-label="Filter products" @submit.prevent>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-lg-2">
+                            <label for="filter_search" class="form-label small mb-1">Search</label>
+                            <input
+                                id="filter_search"
+                                v-model="searchInput"
+                                type="search"
+                                maxlength="100"
+                                class="form-control form-control-sm"
+                                placeholder="Name, SKU or description"
+                                @input="searchChanged"
+                            />
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <label for="filter_category" class="form-label small mb-1">Category</label>
+                            <select
+                                id="filter_category"
+                                v-model="filters.category_id"
+                                class="form-select form-select-sm"
+                                @change="applyFilters"
+                            >
+                                <option value="">All categories</option>
+                                <option v-for="category in categories" :key="category.id" :value="String(category.id)">
+                                    {{ category.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <label for="filter_tag" class="form-label small mb-1">Tag</label>
+                            <select
+                                id="filter_tag"
+                                v-model="filters.tag"
+                                class="form-select form-select-sm"
+                                @change="applyFilters"
+                            >
+                                <option value="">All tags</option>
+                                <option v-for="tag in tagOptions" :key="tag.id" :value="String(tag.id)">
+                                    {{ tag.text }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-1">
+                            <label for="filter_status" class="form-label small mb-1">Status</label>
+                            <select
+                                id="filter_status"
+                                v-model="filters.status"
+                                class="form-select form-select-sm"
+                                @change="applyFilters"
+                            >
+                                <option value="">All</option>
+                                <option v-for="status in statuses" :key="status.value" :value="status.value">
+                                    {{ status.label }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <label for="filter_stock" class="form-label small mb-1">Stock</label>
+                            <select
+                                id="filter_stock"
+                                v-model="filters.stock"
+                                class="form-select form-select-sm"
+                                @change="applyFilters"
+                            >
+                                <option value="">Any stock level</option>
+                                <option v-for="level in stockLevels" :key="level.value" :value="level.value">
+                                    {{ level.label }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <label for="filter_sort" class="form-label small mb-1">Sort by</label>
+                            <select
+                                id="filter_sort"
+                                v-model="filters.sort"
+                                class="form-select form-select-sm"
+                                @change="applyFilters"
+                            >
+                                <option v-for="sort in sorts" :key="sort.value" :value="sort.value">
+                                    {{ sort.label }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-1">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary w-100"
+                                :disabled="!hasFilters"
+                                @click="resetFilters"
+                            >
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                </form>
                 <div class="card-body table-responsive p-0">
                     <table class="table table-hover table-striped align-middle mb-0">
                         <thead>
                             <tr>
-                                <th scope="col">ID</th>
                                 <th scope="col">Photo</th>
                                 <th scope="col">Name</th>
-                                <th scope="col">Description</th>
+                                <th scope="col">SKU</th>
                                 <th scope="col">Category</th>
                                 <th scope="col">Tags</th>
+                                <th scope="col" class="text-end">Stock</th>
+                                <th scope="col">Status</th>
                                 <th scope="col" class="text-end">Price</th>
                                 <th scope="col" class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="product in products.data || []" :key="product.id">
-                                <td>{{ product.id }}</td>
                                 <td>
                                     <img
                                         v-if="photoUrl(product)"
@@ -44,9 +139,12 @@
                                         <i class="fa-solid fa-image" aria-hidden="true"></i>
                                     </span>
                                 </td>
-                                <td>{{ product.name }}</td>
-                                <td>{{ truncate(product.description, 60) }}</td>
-                                <td class="text-capitalize">{{ product.category?.name || '—' }}</td>
+                                <td class="product-name-cell">
+                                    <div class="fw-semibold">{{ product.name }}</div>
+                                    <div class="small text-secondary">{{ truncate(product.description, 60) }}</div>
+                                </td>
+                                <td class="text-nowrap">{{ product.sku || '—' }}</td>
+                                <td>{{ product.category?.name || '—' }}</td>
                                 <td>
                                     <span
                                         v-for="tag in product.tags || []"
@@ -56,7 +154,21 @@
                                     >
                                     <span v-if="!(product.tags || []).length" class="text-secondary">—</span>
                                 </td>
-                                <td class="text-end">{{ formatCurrency(product.price) }}</td>
+                                <td class="text-end text-nowrap">
+                                    <span v-if="stockLevel(product.stock) === 'out'" class="badge text-bg-danger"
+                                        >Out of stock</span
+                                    >
+                                    <template v-else-if="stockLevel(product.stock) === 'low'">
+                                        <span class="badge text-bg-warning me-1">Low stock</span>{{ product.stock }}
+                                    </template>
+                                    <template v-else>{{ product.stock }}</template>
+                                </td>
+                                <td>
+                                    <span class="badge" :class="statusInfo(product.status).badge">{{
+                                        statusInfo(product.status).label
+                                    }}</span>
+                                </td>
+                                <td class="text-end text-nowrap">{{ formatCurrency(product.price) }}</td>
                                 <td class="text-end text-nowrap">
                                     <button
                                         type="button"
@@ -78,13 +190,15 @@
                                 </td>
                             </tr>
                             <tr v-if="loaded && !(products.data || []).length">
-                                <td colspan="8" class="text-center text-secondary py-4">No products yet.</td>
+                                <td colspan="9" class="text-center text-secondary py-4">
+                                    {{ hasFilters ? 'No products match these filters.' : 'No products yet.' }}
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="card-footer clearfix">
-                    <pagination-nav :data="products" @pagination-change-page="load" />
+                    <pagination-nav :data="products" @pagination-change-page="goToPage" />
                 </div>
             </div>
         </div>
@@ -113,6 +227,59 @@
                                     />
                                     <has-error :form="form" field="name" />
                                 </div>
+                                <div class="row">
+                                    <div class="col-sm-4 mb-3">
+                                        <label for="product_sku" class="form-label">SKU</label>
+                                        <input
+                                            id="product_sku"
+                                            v-model="form.sku"
+                                            type="text"
+                                            maxlength="64"
+                                            autocomplete="off"
+                                            spellcheck="false"
+                                            class="form-control text-uppercase"
+                                            :class="{ 'is-invalid': form.errors.has('sku') }"
+                                            aria-describedby="product_sku_help"
+                                        />
+                                        <div id="product_sku_help" class="form-text">
+                                            Letters, digits and hyphens, e.g. EL-1001.
+                                        </div>
+                                        <has-error :form="form" field="sku" />
+                                    </div>
+                                    <div class="col-sm-4 mb-3">
+                                        <label for="product_stock" class="form-label">Stock</label>
+                                        <input
+                                            id="product_stock"
+                                            v-model="form.stock"
+                                            type="number"
+                                            min="0"
+                                            max="1000000"
+                                            step="1"
+                                            inputmode="numeric"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': form.errors.has('stock') }"
+                                        />
+                                        <has-error :form="form" field="stock" />
+                                    </div>
+                                    <div class="col-sm-4 mb-3">
+                                        <label for="product_status" class="form-label">Status</label>
+                                        <select
+                                            id="product_status"
+                                            v-model="form.status"
+                                            class="form-select"
+                                            :class="{ 'is-invalid': form.errors.has('status') }"
+                                        >
+                                            <option
+                                                v-for="status in statuses"
+                                                :key="status.value"
+                                                :value="status.value"
+                                            >
+                                                {{ status.label }}
+                                            </option>
+                                        </select>
+                                        <has-error :form="form" field="status" />
+                                    </div>
+                                </div>
                                 <div class="mb-3">
                                     <label for="product_description" class="form-label">Description</label>
                                     <textarea
@@ -133,7 +300,9 @@
                                             v-model="form.price"
                                             type="number"
                                             min="0"
+                                            max="99999999.99"
                                             step="0.01"
+                                            inputmode="decimal"
                                             class="form-control"
                                             :class="{ 'is-invalid': form.errors.has('price') }"
                                         />
@@ -241,10 +410,39 @@ import { track } from '../../lib/progress';
 import { showModal, hideModal } from '../../bootstrap';
 import { formatCurrency, storageUrl, truncate } from '../../lib/format';
 import { confirmDelete, errorMessage, toastError, toastSuccess } from '../../lib/notify';
+import { DEFAULT_SORT, SORTS, STATUSES, STOCK_LEVELS, statusInfo, stockLevel } from '../../lib/products';
 import TagsInput from '../common/TagsInput.vue';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SEARCH_DELAY_MS = 300;
+
+function emptyFilters() {
+    return { search: '', category_id: '', tag: '', status: '', stock: '', sort: DEFAULT_SORT };
+}
+
+/**
+ * Filters and page from the URL query string. Values the API would reject
+ * (for example a hand-edited URL) are ignored instead of sent.
+ */
+function readQuery(query) {
+    const text = (value) => (typeof value === 'string' ? value : '');
+    const oneOf = (value, options) => (options.some((option) => option.value === value) ? value : '');
+    const id = (value) => (/^[1-9]\d{0,9}$/.test(text(value)) ? text(value) : '');
+    const page = Number.parseInt(text(query.page), 10);
+
+    return {
+        filters: {
+            search: text(query.search).trim().slice(0, 100),
+            category_id: id(query.category_id),
+            tag: id(query.tag),
+            status: oneOf(text(query.status), STATUSES),
+            stock: oneOf(text(query.stock), STOCK_LEVELS),
+            sort: oneOf(text(query.sort), SORTS) || DEFAULT_SORT,
+        },
+        page: page > 0 ? page : 1,
+    };
+}
 
 export default {
     components: { TagsInput },
@@ -253,6 +451,9 @@ export default {
             editMode: false,
             loaded: false,
             page: 1,
+            filters: emptyFilters(),
+            searchInput: '',
+            searchTimer: null,
             products: {},
             categories: [],
             tagOptions: [],
@@ -260,10 +461,28 @@ export default {
             uploading: false,
             photoPreview: null,
             photoChanged: false,
-            form: new Form({ id: '', name: '', description: '', price: '', category_id: '', tags: [], photo: null }),
+            statuses: STATUSES,
+            stockLevels: STOCK_LEVELS,
+            sorts: SORTS,
+            form: new Form({
+                id: '',
+                name: '',
+                sku: '',
+                description: '',
+                price: '',
+                stock: 0,
+                status: 'active',
+                category_id: '',
+                tags: [],
+                photo: null,
+            }),
         };
     },
     computed: {
+        hasFilters() {
+            const defaults = emptyFilters();
+            return Object.keys(defaults).some((key) => this.filters[key] !== defaults[key]);
+        },
         tagSuggestions() {
             const term = this.tagInput.trim().toLowerCase();
             return term ? this.tagOptions.filter((tag) => tag.text.toLowerCase().includes(term)) : this.tagOptions;
@@ -276,26 +495,75 @@ export default {
             return key ? this.form.errors.get(key) : '';
         },
     },
+    watch: {
+        // Filters live in the URL, so reload, back/forward and shared links
+        // show the same list.
+        '$route.query'() {
+            this.readRoute();
+            this.load();
+        },
+    },
     created() {
+        this.readRoute();
         this.load();
         this.loadCategories();
         this.loadTags();
     },
     beforeUnmount() {
+        clearTimeout(this.searchTimer);
         hideModal(this.$refs.modal);
     },
     methods: {
         formatCurrency,
         truncate,
+        statusInfo,
+        stockLevel,
         photoUrl(product) {
             return product.photo_url || storageUrl(product.photo);
         },
-        async load(page = this.page) {
+        readRoute() {
+            const { filters, page } = readQuery(this.$route.query);
+            this.filters = filters;
+            this.page = page;
+            if (this.searchInput.trim() !== filters.search) this.searchInput = filters.search;
+        },
+        updateRoute(page = 1) {
+            const defaults = emptyFilters();
+            const query = {};
+            for (const [key, value] of Object.entries(this.filters)) {
+                if (value !== defaults[key]) query[key] = value;
+            }
+            if (page > 1) query.page = String(page);
+            this.$router.replace({ query }).catch(() => {});
+        },
+        applyFilters() {
+            clearTimeout(this.searchTimer);
+            this.filters.search = this.searchInput.trim();
+            this.updateRoute();
+        },
+        searchChanged() {
+            clearTimeout(this.searchTimer);
+            this.searchTimer = setTimeout(this.applyFilters, SEARCH_DELAY_MS);
+        },
+        resetFilters() {
+            clearTimeout(this.searchTimer);
+            this.filters = emptyFilters();
+            this.searchInput = '';
+            this.updateRoute();
+        },
+        goToPage(page) {
+            this.updateRoute(page);
+        },
+        async load() {
+            const params = { page: this.page };
+            for (const [key, value] of Object.entries(this.filters)) {
+                if (value !== '') params[key] = value;
+            }
             try {
-                const { data } = await track(axios.get('/api/product', { params: { page } }));
+                const { data } = await track(axios.get('/api/product', { params }));
                 this.products = data.data || {};
-                this.page = this.products.current_page || page;
-                if (!(this.products.data || []).length && page > 1) return this.load(page - 1);
+                const lastPage = this.products.last_page || 1;
+                if (!(this.products.data || []).length && this.page > lastPage) return this.goToPage(lastPage);
             } catch (error) {
                 toastError(errorMessage(error, 'Unable to load products.'));
             } finally {
@@ -306,7 +574,9 @@ export default {
             try {
                 const { data } = await axios.get('/api/category/list');
                 // `pluck('name', 'id')` => { "<id>": "<name>" }
-                this.categories = Object.entries(data.data || {}).map(([id, name]) => ({ id: Number(id), name }));
+                this.categories = Object.entries(data.data || {})
+                    .map(([id, name]) => ({ id: Number(id), name }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
             } catch (error) {
                 toastError(errorMessage(error, 'Unable to load categories.'));
             }
@@ -314,7 +584,9 @@ export default {
         async loadTags() {
             try {
                 const { data } = await axios.get('/api/tag/list');
-                this.tagOptions = (data.data || []).map((tag) => ({ id: tag.id, text: tag.name }));
+                this.tagOptions = (data.data || [])
+                    .map((tag) => ({ id: tag.id, text: tag.name }))
+                    .sort((a, b) => a.text.localeCompare(b.text));
             } catch (error) {
                 toastError(errorMessage(error, 'Unable to load tags.'));
             }
@@ -337,8 +609,11 @@ export default {
             this.form.fill({
                 id: product.id,
                 name: product.name,
+                sku: product.sku || '',
                 description: product.description,
                 price: product.price,
+                stock: product.stock ?? 0,
+                status: product.status || 'active',
                 category_id: product.category_id ?? product.category?.id ?? '',
                 tags: (product.tags || []).map((tag) => ({ text: tag.text ?? tag.name })),
                 photo: product.photo || null,
@@ -395,9 +670,15 @@ export default {
                 name: this.form.name,
                 description: this.form.description,
                 price: this.form.price,
+                stock: this.form.stock,
+                status: this.form.status,
                 category_id: this.form.category_id === '' ? null : Number(this.form.category_id),
                 tags: this.form.tags.map((tag) => ({ text: tag.text })),
             };
+            // Products created before SKUs existed may have none; an empty SKU
+            // is only sent (and rejected) when creating a product.
+            const sku = String(this.form.sku ?? '').trim();
+            if (!this.editMode || sku !== '') data.sku = sku;
             // Only send `photo` for new products or when it actually changed, so
             // legacy photo values are not re-validated on unrelated edits.
             if (!this.editMode || this.photoChanged) data.photo = this.form.photo || null;

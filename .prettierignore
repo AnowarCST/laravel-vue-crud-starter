@@ -7,3 +7,4 @@ bootstrap/cache
 *.blade.php
 package-lock.json
 composer.lock
+.claude

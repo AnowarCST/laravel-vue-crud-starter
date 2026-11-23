@@ -61,6 +61,10 @@
     background: var(--bs-secondary-bg);
 }
 
+.product-name-cell {
+    min-width: 14rem;
+}
+
 .photo-preview {
     max-width: 100%;
     max-height: 180px;

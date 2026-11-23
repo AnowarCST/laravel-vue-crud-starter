@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Everyday backpack</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="400" cy="476" rx="160" ry="18" fill="#C9D5E4"/>
+  <path d="M360 160 C360 110 440 110 440 160" stroke="#2E3A59" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <rect x="270" y="236" width="40" height="150" rx="18" fill="#3A64B0"/>
+  <rect x="490" y="236" width="40" height="150" rx="18" fill="#3A64B0"/>
+  <rect x="290" y="150" width="220" height="310" rx="70" fill="#4A7BD0"/>
+  <path d="M300 230 C340 205 460 205 500 230" stroke="#3A64B0" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <rect x="320" y="318" width="160" height="118" rx="28" fill="#3A64B0"/>
+  <path d="M340 340 L460 340" stroke="#2E3A59" stroke-width="5" stroke-linecap="round"/>
+  <rect x="446" y="336" width="14" height="30" rx="5" fill="#F2A93B"/>
+  <rect x="330" y="180" width="16" height="90" rx="8" fill="#FFFFFF" fill-opacity="0.25"/>
+</svg>

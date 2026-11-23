@@ -14,8 +14,14 @@ class CategoryFactory extends Factory
 
     public function definition(): array
     {
+        /** @var string $area */
+        $area = fake()->randomElement(['Garden', 'Kitchen', 'Office', 'Travel', 'Bathroom', 'Fitness', 'Kids', 'Pet']);
+
+        /** @var string $kind */
+        $kind = fake()->randomElement(['Essentials', 'Accessories', 'Supplies', 'Storage', 'Tools', 'Gifts', 'Care', 'Basics']);
+
         return [
-            'name' => fake()->unique()->words(2, true),
+            'name' => $area.' '.$kind,
             'description' => fake()->sentence(),
         ];
     }

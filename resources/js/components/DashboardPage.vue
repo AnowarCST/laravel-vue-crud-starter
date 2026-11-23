@@ -55,6 +55,44 @@
 
             <div class="col-lg-4">
                 <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Low stock</h3>
+                        <div v-if="stats" class="card-tools">
+                            <router-link
+                                to="/products?stock=out"
+                                class="badge text-bg-danger text-decoration-none me-1"
+                                :aria-label="`${stats.out_of_stock} out of stock: show products`"
+                                >{{ stats.out_of_stock }} out</router-link
+                            >
+                            <router-link
+                                to="/products?stock=low"
+                                class="badge text-bg-warning text-decoration-none"
+                                :aria-label="`${stats.low_stock} low stock: show products`"
+                                >{{ stats.low_stock }} low</router-link
+                            >
+                        </div>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li
+                            v-for="product in lowStock"
+                            :key="product.id"
+                            class="list-group-item d-flex justify-content-between align-items-center gap-2"
+                        >
+                            <span class="text-truncate">
+                                {{ product.name }}
+                                <span class="d-block small text-secondary">{{ product.sku || '—' }}</span>
+                            </span>
+                            <span v-if="product.stock <= 0" class="badge text-bg-danger flex-shrink-0"
+                                >Out of stock</span
+                            >
+                            <span v-else class="badge text-bg-warning flex-shrink-0">{{ product.stock }} left</span>
+                        </li>
+                        <li v-if="loaded && !lowStock.length" class="list-group-item text-secondary">
+                            Every product has more than {{ lowStockThreshold }} units in stock.
+                        </li>
+                    </ul>
+                </div>
+                <div class="card mb-4">
                     <div class="card-header"><h3 class="card-title">Welcome</h3></div>
                     <div class="card-body">
                         <p class="mb-2">
@@ -92,6 +130,10 @@ import axios from 'axios';
 import { track } from '../lib/progress';
 import { currentUser } from '../lib/user';
 import { formatCurrency } from '../lib/format';
+import { LOW_STOCK_THRESHOLD } from '../lib/products';
+
+// Lowest stock first; the card lists those with LOW_STOCK_THRESHOLD units or fewer.
+const LOW_STOCK_LIMIT = 8;
 
 // Every number shown here comes from the API; nothing is mocked.
 async function total(url) {
@@ -110,6 +152,9 @@ export default {
             loaded: false,
             version: '',
             latestProducts: [],
+            lowStock: [],
+            lowStockThreshold: LOW_STOCK_THRESHOLD,
+            stats: null,
             counts: { products: null, categories: null, tags: null, users: null },
         };
     },
@@ -159,13 +204,15 @@ export default {
         formatCurrency,
         async load() {
             const isAdmin = this.$gate.isAdmin();
-            const [products, version, categories, tags, users] = await track(
+            const [products, version, categories, tags, users, stats, lowStock] = await track(
                 Promise.allSettled([
-                    axios.get('/api/product'),
+                    axios.get('/api/product', { params: { per_page: 5 } }),
                     axios.get('/api/version'),
                     isAdmin ? total('/api/category') : null,
                     isAdmin ? total('/api/tag') : null,
                     isAdmin ? total('/api/user') : null,
+                    axios.get('/api/product/stats'),
+                    axios.get('/api/product', { params: { sort: 'stock', per_page: LOW_STOCK_LIMIT } }),
                 ]),
             );
 
@@ -180,6 +227,11 @@ export default {
             this.counts.categories = categories.value ?? null;
             this.counts.tags = tags.value ?? null;
             this.counts.users = users.value ?? null;
+            if (stats.status === 'fulfilled') this.stats = stats.value.data?.data || null;
+            if (lowStock.status === 'fulfilled') {
+                const rows = lowStock.value.data?.data?.data || [];
+                this.lowStock = rows.filter((product) => product.stock <= LOW_STOCK_THRESHOLD);
+            }
             this.loaded = true;
         },
     },

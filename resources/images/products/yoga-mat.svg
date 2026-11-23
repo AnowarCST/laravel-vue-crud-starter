@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-labelledby="title">
+  <title id="title">Rolled-up yoga mat</title>
+  <rect width="800" height="600" fill="#EEF3F8"/>
+  <circle cx="400" cy="290" r="225" fill="#DFE8F3"/>
+  <ellipse cx="390" cy="410" rx="200" ry="18" fill="#C9D5E4"/>
+  <ellipse cx="240" cy="320" rx="26" ry="72" fill="#23847C"/>
+  <rect x="240" y="248" width="290" height="144" fill="#2FA39A"/>
+  <ellipse cx="530" cy="320" rx="52" ry="72" fill="#7CCFC6"/>
+  <g fill="none" stroke="#23847C" stroke-width="6">
+    <ellipse cx="530" cy="320" rx="38" ry="54"/>
+    <ellipse cx="530" cy="320" rx="24" ry="35"/>
+    <ellipse cx="530" cy="320" rx="10" ry="15"/>
+  </g>
+  <rect x="300" y="242" width="26" height="156" rx="6" fill="#F2A93B"/>
+  <rect x="430" y="242" width="26" height="156" rx="6" fill="#F2A93B"/>
+  <rect x="262" y="270" width="230" height="14" rx="7" fill="#FFFFFF" fill-opacity="0.25"/>
+</svg>

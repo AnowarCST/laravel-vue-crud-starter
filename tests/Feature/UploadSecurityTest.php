@@ -60,12 +60,13 @@ class UploadSecurityTest extends TestCase
     public function test_product_photo_only_accepts_paths_issued_by_the_upload_endpoint(): void
     {
         $category = Category::factory()->create();
-        $base = ['name' => 'P', 'description' => 'D', 'price' => '1', 'category_id' => $category->id];
+        $base = ['name' => 'P', 'sku' => 'P-1', 'description' => 'D', 'price' => '1', 'category_id' => $category->id];
 
         foreach ([
             '../.env', 'uploads/../../.env', '/etc/passwd', 'uploads/shell.php',
             'uploads/'.str_repeat('a', 40).'.php', 'uploads/'.str_repeat('a', 40).'.png/../x',
-            'https://evil.example/x.png', 'images/cars/panel01_img01.jpg',
+            'https://evil.example/x.png', 'images/products/wireless-mouse.webp',
+            'images/products/../../.env',
             ['uploads/'.str_repeat('a', 40).'.png'], 12345,
         ] as $photo) {
             $this->postJson('/api/product', $base + ['photo' => $photo])
@@ -80,15 +81,17 @@ class UploadSecurityTest extends TestCase
         $this->assertStringEndsWith('/storage/'.$path, $this->jsonString($created, 'data.photo_url'));
     }
 
-    public function test_legacy_photo_may_be_resubmitted_unchanged_and_replaced_uploads_are_removed(): void
+    public function test_seeded_photo_may_be_resubmitted_unchanged_and_replaced_uploads_are_removed(): void
     {
-        $product = Product::factory()->create(['photo' => 'images/cars/panel01_img01.jpg']);
+        $product = Product::factory()->create(['photo' => 'images/products/wireless-mouse.webp']);
         $base = ['name' => 'P', 'description' => 'D', 'price' => '1', 'category_id' => $product->category_id];
 
-        $this->putJson('/api/product/'.$product->id, $base + ['photo' => 'images/cars/panel01_img01.jpg'])->assertOk()
-            ->assertJsonPath('data.photo_url', 'http://localhost/images/cars/panel01_img01.jpg');
-        $this->putJson('/api/product/'.$product->id, $base + ['photo' => 'images/cars/other.jpg'])
-            ->assertUnprocessable()->assertJsonValidationErrors('photo');
+        $this->putJson('/api/product/'.$product->id, $base + ['photo' => 'images/products/wireless-mouse.webp'])->assertOk()
+            ->assertJsonPath('data.photo_url', 'http://localhost/images/products/wireless-mouse.webp');
+        foreach (['images/products/yoga-mat.webp', 'images/products/../../.env', 'images/products/wireless-mouse.webp/'] as $other) {
+            $this->putJson('/api/product/'.$product->id, $base + ['photo' => $other])
+                ->assertUnprocessable()->assertJsonValidationErrors('photo');
+        }
 
         $upload = fn (): string => $this->jsonString($this->postJson('/api/product/upload', [
             'file' => UploadedFile::fake()->createWithContent('a.png', self::png()),
@@ -101,6 +104,28 @@ class UploadSecurityTest extends TestCase
 
         Storage::disk('public')->assertMissing($first);
         Storage::disk('public')->assertExists($second);
+    }
+
+    public function test_photo_url_is_only_generated_for_safe_relative_paths(): void
+    {
+        foreach ([
+            'images/products/coffee-mug.webp' => 'http://localhost/images/products/coffee-mug.webp',
+            'uploads/'.str_repeat('a', 40).'.png' => '/storage/uploads/'.str_repeat('a', 40).'.png',
+            'images/../.env' => null,
+            'uploads/../../.env' => null,
+            'https://evil.example/x.png' => null,
+            '/etc/passwd' => null,
+            'javascript:alert(1)' => null,
+        ] as $photo => $expected) {
+            $url = Product::factory()->make(['photo' => $photo])->photo_url;
+
+            if ($expected === null) {
+                $this->assertNull($url, $photo);
+            } else {
+                $this->assertIsString($url);
+                $this->assertStringEndsWith($expected, $url);
+            }
+        }
     }
 
     /**

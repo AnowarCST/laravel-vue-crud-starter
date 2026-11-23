@@ -28,6 +28,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('tag/list', [TagController::class, 'list']);
     Route::get('category/list', [CategoryController::class, 'list']);
     Route::post('product/upload', [ProductController::class, 'upload']);
+    Route::get('product/stats', [ProductController::class, 'stats']);
 
     Route::apiResources([
         'user' => UserController::class,
