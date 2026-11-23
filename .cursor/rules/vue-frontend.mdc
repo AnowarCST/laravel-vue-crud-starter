@@ -1,0 +1,15 @@
+---
+description: Vue 3, AdminLTE and Content-Security-Policy rules for the SPA and Blade views
+globs: resources/js/**, resources/css/**, resources/views/**
+alwaysApply: false
+---
+
+Follow @resources/js/AGENTS.md. In short:
+
+- No inline scripts, inline event handlers, `v-html`, `eval` or CDNs; the
+  nonce-based CSP blocks them and every E2E test fails on a CSP violation.
+- API calls: axios with relative `/api/...` URLs, wrapped in `track()`;
+  errors through `errorMessage()` and `toastError()`; forms with the `Form`
+  helper and `<has-error>`.
+- `$gate.isAdmin()` and `meta.admin` only hide UI; the API enforces access.
+- Run `npm run lint`, `npm run format:check` and `npm run build`.

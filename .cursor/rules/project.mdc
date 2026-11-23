@@ -1,0 +1,15 @@
+---
+description: Project overview and where the shared instructions live
+alwaysApply: true
+---
+
+- The shared instructions for every AI assistant are in @AGENTS.md (commands,
+  conventions, security rules, definition of done). Follow them; do not
+  restate or override them here.
+- Scoped instructions: @resources/js/AGENTS.md (frontend),
+  @tests/e2e/AGENTS.md (Playwright), @database/AGENTS.md (migrations and
+  seeders).
+- PHP runs in Docker: `docker compose exec -T app ...`. JavaScript tooling
+  runs with `npm run ...` (Node 26).
+- A change is done only when the "Definition of done" commands in
+  AGENTS.md pass. Run them; never claim a result you did not see.

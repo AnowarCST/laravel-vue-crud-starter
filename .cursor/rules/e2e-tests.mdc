@@ -1,0 +1,17 @@
+---
+description: Playwright end-to-end tests, their throwaway stack and rate limits
+globs: tests/e2e/**, playwright.config.js
+alwaysApply: false
+---
+
+Follow @tests/e2e/AGENTS.md. In short:
+
+- Import `test` and `expect` from `./support/test.js`; it fails a test on a
+  CSP violation or an uncaught page error.
+- Reuse saved sessions (`storageState.admin`, `admin2`, `user`); the app
+  allows 10 logins per minute per IP and 60 API requests per minute per
+  account.
+- Create your own records with `uniqueSuffix()`; never rely on seed data.
+- `test.fail()` only for a documented known bug; never skip a failing test.
+- Run with `tests/e2e/setup/start-stack.sh`, `tests/e2e/setup/run-tests.sh`
+  and `tests/e2e/setup/stop-stack.sh`.

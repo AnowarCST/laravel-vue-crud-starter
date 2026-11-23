@@ -1,0 +1,17 @@
+---
+description: Security rules. Use when a change touches authentication, authorization, uploads, headers, CSP, secrets, accounts, rate limits or dependencies.
+alwaysApply: false
+---
+
+Follow "Security rules" and "Do not" in @AGENTS.md, and @SECURITY.md for
+the policy and production checklist. In short:
+
+- Never commit secrets, real credentials or personal data; never seed
+  privileged accounts.
+- Every authenticated `/api` route stays in the `auth:api` + `verified`
+  group in `routes/api.php`.
+- Uploads go through `App\Actions\Products\StoreProductImage`.
+- Do not weaken `App\Http\Middleware\SecurityHeaders`, the rate limiters in
+  `AppServiceProvider`, or the tests that check them.
+- Report vulnerabilities privately (see SECURITY.md), never in a public
+  issue.

@@ -223,6 +223,17 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    `tests/e2e/catalogue.spec.js`. If the page is new, also add its path to
    the list in `tests/e2e/security.spec.js`.
 
+## AI coding assistants
+
+The repository has instructions for AI coding assistants such as OpenAI
+Codex, Claude Code and Cursor. [AGENTS.md](AGENTS.md) is the single source
+of truth; `CLAUDE.md`, `.claude/` and `.cursor/rules/` point to it.
+[docs/ai-assistants.md](docs/ai-assistants.md) lists which file each tool
+reads and how to keep them in sync. If your change alters a convention, a
+command or a rule, update `AGENTS.md` in the same pull request. Code written
+with an assistant goes through the same checks and review as any other
+contribution.
+
 ## Pull request checklist
 
 - [ ] The pull request explains what changed and why, and links the issue.

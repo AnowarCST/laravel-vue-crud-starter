@@ -26,6 +26,12 @@ yarn-error.log
 Homestead.json
 Homestead.yaml
 
+# AI coding assistants: local state and personal settings (the shared
+# .claude/settings.json and .claude/commands/ are committed)
+/.claude/worktrees/
+/.claude/settings.local.json
+/CLAUDE.local.md
+
 # Editors / OS
 .idea
 .vscode
