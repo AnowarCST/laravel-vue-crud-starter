@@ -10,15 +10,24 @@ A short orientation for contributors. For setup instructions see
   an OAuth2 API (Laravel Passport), CRUD screens for users, products,
   categories and tags, profile management, product image upload, and a
   Developer page for OAuth clients and personal access tokens.
+- Products have a SKU (required, unique, stored in upper case), a stock
+  level and a status (`active`, `draft` or `archived`). The products page
+  has search, filters and sorting kept in the URL, and the dashboard shows
+  product counts and a low-stock list (`GET /api/product/stats`).
+- Optional demo data (`php artisan db:seed`): an everyday retail catalogue
+  with original illustrations. It creates no user accounts.
+- See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together and
+  [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules.
 
 ## Stack
 
 - PHP 8.5, Laravel 13, Laravel Passport 13 (`auth:api` guard), laravel/ui
   authentication controllers.
 - Vue 3 single-page application with Vue Router, built with Vite
-  (`vite.config.js`, output in `public/build`). Entry points:
-  `resources/js/app.js` (the dashboard) and `resources/js/auth.js` (login,
-  registration and other guest pages).
+  (`vite.config.js`, output in `public/build`). Three entry points:
+  `resources/js/app.js` (the dashboard), `resources/js/auth.js` (login,
+  registration and other guest pages) and `resources/js/api-docs.js` (the
+  Swagger UI viewer for `/docs`).
 - AdminLTE 4, Bootstrap 5, Font Awesome and SweetAlert2. Fonts are bundled;
   nothing is loaded from a CDN.
 - MySQL 9.7 LTS. Tests use an in-memory SQLite database (forced in
@@ -33,6 +42,15 @@ A short orientation for contributors. For setup instructions see
 - API calls go to `/api/*` with Passport's `laravel_token` cookie plus the
   CSRF header. Every authenticated API route also requires a verified email
   address.
+
+## API documentation
+
+- `docs/api/openapi.yaml` (OpenAPI 3.1) describes every `/api` route.
+  `OpenApiDocumentTest` fails if a route is missing from it.
+- `/docs` shows it in Swagger UI and `/docs/openapi.yaml` serves the file.
+  Both are on by default only when `APP_ENV=local`, where anyone can open
+  them. Elsewhere, `API_DOCS_ENABLED=true` turns them on for signed-in,
+  verified administrators only (`config/api-docs.php`).
 
 ## Security conventions
 
@@ -67,6 +85,14 @@ A short orientation for contributors. For setup instructions see
   (Prettier), `npm run build`, `npm audit`.
 - CI runs all of the above (`.github/workflows/ci.yml`), plus CodeQL and a
   production Docker build.
+- End-to-end tests: Playwright (Chromium) in `tests/e2e/`, run against a
+  throwaway stack (production image, MySQL, Mailpit) started by
+  `tests/e2e/setup/start-stack.sh`. CI: `.github/workflows/e2e.yml` on every
+  pull request. Tests create their own data and never rely on the demo data.
+- Security scan: an OWASP ZAP baseline scan of the signed-out pages against
+  the same stack (`.github/workflows/zap.yml`, weekly, on demand, and on pull
+  requests to `main` that change HTTP behaviour). Rules are in
+  `.zap/rules.tsv`.
 
 ## Guiding principles
 

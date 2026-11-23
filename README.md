@@ -161,10 +161,121 @@ Tests always use an in-memory SQLite database and never touch your MySQL data.
 | JavaScript and Vue lint (ESLint) | `docker compose --profile dev run --rm node npm run lint` (fix: `npm run lint:fix`) |
 | JavaScript and Vue formatting (Prettier) | `docker compose --profile dev run --rm node npm run format:check` (fix: `npm run format`) |
 | Dependency audits | `docker compose exec app composer audit` and `docker compose --profile dev run --rm node npm audit` |
+| End-to-end tests (Playwright) | `tests/e2e/setup/start-stack.sh`, then `tests/e2e/setup/run-tests.sh` (see [End-to-end tests](#end-to-end-tests)) |
 
 Without Docker, run the same `composer` and `npm` commands directly. CI runs
 all of these, plus a production Vite build and a production Docker build (see
-`.github/workflows/ci.yml`).
+`.github/workflows/ci.yml`). The end-to-end tests run in their own workflow,
+`.github/workflows/e2e.yml`.
+
+## End-to-end tests
+
+The Playwright tests in `tests/e2e/` use Chromium to sign in, manage users,
+products, categories and tags, upload a product photo, search and filter the
+product list, check the dashboard counts, register and verify a new account
+(using the email caught by Mailpit), manage personal access tokens and open
+the API documentation. Every test also fails if a page reports a
+Content-Security-Policy violation or an uncaught JavaScript error.
+
+They run against a throwaway stack: the production Docker image, MySQL (data
+kept in memory only) and Mailpit. It does not touch your development
+database. Each run generates new random secrets and test accounts and stores
+them in `tests/e2e/.stack/` (ignored by git). The stack loads the demo
+catalogue, but the tests create their own records and do not depend on it.
+
+Requirements: Docker with Docker Compose v2, Node 26, and the project's npm
+packages (`npm ci`). The stack publishes the app on `127.0.0.1:8080` and
+Mailpit on `127.0.0.1:8125`, so those ports must be free. The first run
+downloads the Playwright image (`mcr.microsoft.com/playwright:v1.65.0-noble`)
+and builds the production image, which needs several GB of free Docker disk
+space.
+
+```bash
+npm ci
+tests/e2e/setup/start-stack.sh                       # build the prod image, start the stack, migrate, seed, create test accounts
+tests/e2e/setup/run-tests.sh                         # run every test in the Playwright image
+tests/e2e/setup/run-tests.sh tests/e2e/auth.spec.js  # or only some files (arguments go to `playwright test`)
+tests/e2e/setup/stop-stack.sh                        # remove the containers, volumes and generated secrets
+```
+
+`start-stack.sh` reads these optional environment variables: `E2E_PROJECT`
+(Compose project name, default `lvcs-e2e`), `E2E_APP_PORT` (default `8080`),
+`E2E_MAILPIT_PORT` (default `8125`), `E2E_IMAGE` (default `lvcs-e2e:local`)
+and `E2E_SKIP_BUILD=1` (use an image you already built). `run-tests.sh` only
+works with `E2E_APP_PORT=8080`. With another port, run Playwright on your
+machine instead: `npx playwright install chromium`, then `npm run test:e2e`
+(or `npm run test:e2e:ui` for the interactive mode).
+
+The HTML report is written to `tests/e2e/playwright-report/` and failure
+traces to `tests/e2e/test-results/`. Both can contain the test accounts'
+passwords for that run, so do not share them outside your team. The stack
+sets `API_DOCS_ENABLED=true` so the `/docs` tests can run; because it uses
+`APP_ENV=production`, only administrators can open `/docs` there.
+
+Two limits matter if you add tests. The app allows 10 login attempts per
+minute per IP address, so wait a minute before starting a second full run.
+The API allows 60 requests per minute per account, so the tests reuse saved
+sessions and spread their requests over two administrator accounts and one
+regular user. One test is marked with `test.fail()` on purpose: it shows a
+known bug (changing your own password also signs out the current session)
+and will start failing, as an unexpected pass, once the bug is fixed.
+
+In CI, `.github/workflows/e2e.yml` runs the same scripts on every pull request
+and on pushes to `main`, and uploads the report as the `playwright-report`
+artifact.
+
+## Security scan (ZAP)
+
+`.github/workflows/zap.yml` runs an [OWASP ZAP](https://www.zaproxy.org/)
+baseline scan against the same throwaway stack. ZAP crawls the signed-out
+pages and checks the responses passively; it does not attack the
+application. The scan runs every Monday, when started by hand from the
+**Actions** tab (**ZAP baseline**, then **Run workflow**), and on pull
+requests to `main` that change code or configuration that shapes HTTP
+responses (for example `app/`, `config/`, `routes/`, `docker/` or
+`.zap/`).
+
+`.zap/rules.tsv` sets what each finding does. Rules set to `FAIL` cover
+protections the app has today, such as the clickjacking and
+`X-Content-Type-Options` headers, the Content-Security-Policy, SameSite
+cookies and CSRF tokens on forms, so a match means a regression and fails
+the job. Rules set to `IGNORE` are false positives that were checked by hand;
+the file explains each one. All other findings are listed in the job log and
+in the `zap-baseline-report` artifact without failing the job.
+
+## API documentation
+
+[docs/api/openapi.yaml](docs/api/openapi.yaml) describes every `/api`
+endpoint in OpenAPI 3.1: authentication (bearer token or the dashboard's
+session cookie), request bodies, query parameters, responses and errors.
+`php artisan test` includes `OpenApiDocumentTest`, which fails if an `/api`
+route is missing from the document or the document lists an operation that
+has no route.
+
+The application shows the document in Swagger UI at `/docs` (for example
+<http://localhost:8000/docs>) and serves the file at `/docs/openapi.yaml`.
+The viewer is bundled by Vite and loads nothing from a CDN.
+
+![The API documentation at /docs, showing the Meta, Profile and Products endpoints](docs/screenshots/api-docs.png)
+
+- With `APP_ENV=local`, both pages are on and anyone who can reach the app
+  can open them.
+- In any other environment they are off and return 404. Set
+  `API_DOCS_ENABLED=true` to turn them on; then only signed-in
+  administrators with a verified email address can open them.
+- `API_DOCS_ENABLED=false` turns them off everywhere, including local.
+
+"Try it out" in the viewer uses your signed-in session. To use a personal
+access token instead, create one on the Developer page and enter it under
+**Authorize**.
+
+To check the document after changing it, lint it with
+[Redocly CLI](https://redocly.com/docs/cli/):
+
+```bash
+docker run --rm -e REDOCLY_TELEMETRY=off -v "$PWD/docs/api":/spec:ro -w /spec \
+  redocly/cli:2.82.0 lint openapi.yaml
+```
 
 ## Upgrading from the Laravel 8 version
 
@@ -245,6 +356,18 @@ the new container starts (an upgrade between two LTS releases is supported).
 Take a dump first, as in step 1, because the upgraded data directory cannot be
 opened by MySQL 8.4 again. To roll back, start a fresh `mysql:8.4` volume and
 import the dump.
+
+## Contributing
+
+Contributions are welcome. Please read:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): development setup, commit conventions,
+  the checks a pull request must pass, and how to add a CRUD module;
+- [ARCHITECTURE.md](ARCHITECTURE.md): how the application is put together;
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): the Contributor Covenant 2.1,
+  which everyone taking part agrees to follow;
+- [SECURITY.md](SECURITY.md): how to report a vulnerability. Do not open a
+  public issue for security problems.
 
 ## Security
 

@@ -11,8 +11,10 @@
     "production": "vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write resources/js resources/css resources/images/render.mjs vite.config.js eslint.config.js",
-    "format:check": "prettier --check resources/js resources/css resources/images/render.mjs vite.config.js eslint.config.js",
+    "format": "prettier --write resources/js resources/css resources/images/render.mjs vite.config.js eslint.config.js playwright.config.js \"tests/e2e/**/*.js\"",
+    "format:check": "prettier --check resources/js resources/css resources/images/render.mjs vite.config.js eslint.config.js playwright.config.js \"tests/e2e/**/*.js\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "audit:security": "npm audit --audit-level=moderate"
   },
   "dependencies": {
@@ -22,12 +24,14 @@
     "admin-lte": "^4.10.2",
     "axios": "^1.21.1",
     "bootstrap": "^5.3.9",
+    "swagger-ui-dist": "^5.36.0",
     "sweetalert2": "^11.26.25",
     "vue": "^3.5.46",
     "vue-router": "^5.5.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.65.0",
     "@vitejs/plugin-vue": "^6.0.11",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
@@ -37,5 +41,8 @@
     "prettier": "^3.10.1",
     "vite": "^8.3.8",
     "vue-eslint-parser": "^10.4.2"
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }

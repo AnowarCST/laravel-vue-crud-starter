@@ -21,7 +21,10 @@ export default defineConfig(({ mode }) => {
 
     return {
         plugins: [
-            laravel({ input: ['resources/js/app.js', 'resources/js/auth.js'], refresh: true }),
+            laravel({
+                input: ['resources/js/app.js', 'resources/js/auth.js', 'resources/js/api-docs.js'],
+                refresh: true,
+            }),
             vue({
                 template: {
                     // Let Vite rewrite relative asset URLs in SFC templates, but leave

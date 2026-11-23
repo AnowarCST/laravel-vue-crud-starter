@@ -1,0 +1,46 @@
+# ZAP baseline scan rules for .github/workflows/zap.yml (zap-baseline.py -c).
+# Format: rule ID <TAB> IGNORE|WARN|FAIL <TAB> (rule name). Lines starting with # are comments.
+# Rules not listed here keep their default action, WARN. The workflow passes -I, so only
+# FAIL rules fail the job; WARN results are still listed in the job log and the report.
+#
+# FAIL: protections the app has today. A match means a regression.
+# Every response must keep X-Frame-Options or CSP frame-ancestors.
+10020	FAIL	(Anti-clickjacking Header)
+# Every response must keep X-Content-Type-Options: nosniff.
+10021	FAIL	(X-Content-Type-Options Header Missing)
+# APP_DEBUG must stay off: no stack traces or debug messages in responses.
+10023	FAIL	(Information Disclosure - Debug Error Messages)
+# Apache hides its version (ServerTokens Prod); a version string here is a regression.
+10036	FAIL	(HTTP Server Response Header)
+# PHP must not announce itself in an X-Powered-By header.
+10037	FAIL	(Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s))
+# Every HTML page must send a Content-Security-Policy.
+10038	FAIL	(Content Security Policy (CSP) Header Not Set)
+# Session and XSRF cookies must keep a SameSite attribute.
+10054	FAIL	(Cookie without SameSite Attribute)
+# CORS must not allow arbitrary origins.
+10098	FAIL	(Cross-Domain Misconfiguration)
+# Every form must keep its CSRF token.
+10202	FAIL	(Absence of Anti-CSRF Tokens)
+# Error pages must not leak exception details.
+90022	FAIL	(Application Error Disclosure)
+#
+# INFO: informational rules that describe the app rather than a weakness. Listed as INFO so
+# they stay in the report without being counted as warnings.
+# Pages are sent with Cache-Control: no-cache, private, so shared caches do not store them.
+10049	INFO	(Non-Storable Content)
+# Notes that /login is a login form.
+10111	INFO	(Authentication Request Identified)
+# Notes that the laravel_starter_session cookie is a session cookie.
+10112	INFO	(Session Management Response Identified)
+#
+# IGNORE: false positives for this app, each checked by hand.
+# Only XSRF-TOKEN lacks HttpOnly. Laravel sets it so JavaScript can read it; it is a CSRF
+# token, not a credential. The session and laravel_token cookies are HttpOnly, which
+# tests/e2e/security.spec.js checks.
+10010	IGNORE	(Cookie No HttpOnly Flag)
+# The 302 bodies are the standard Symfony "Redirecting to <url>" page and contain only the target URL.
+10044	IGNORE	(Big Redirect Detected (Potential Sensitive Information Leak))
+# Only raised for static JavaScript files. Permissions-Policy applies to documents, and every
+# HTML page sends it (checked by tests/e2e/security.spec.js).
+10063	IGNORE	(Permissions Policy Header Not Set)

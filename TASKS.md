@@ -12,11 +12,16 @@ covered by tests or checks, and passing in CI.
 | 5 | Security hardening | Done | Nonce-based CSP and security headers, strict CORS, hardened sessions, `SECURITY.md`. |
 | 6 | Docker and developer experience | Done | Multi-stage image (dev and prod), MySQL 9.7 LTS, Mailpit, `/up` health checks, localhost-only ports. |
 | 7 | Code quality and CI | Done | Pint, Larastan level 9, ESLint, Prettier, PHPUnit, `composer audit`, `npm audit`, CodeQL and Dependabot in CI. |
-| 8 | End-to-end tests (Playwright) | Planned | Tracked in a separate pull request. |
-| 9 | Contributor and API documentation | Planned | `CONTRIBUTING.md`, `ARCHITECTURE.md`, OpenAPI documentation. Tracked in a separate pull request. |
-| 10 | Dynamic security scan (OWASP ZAP) | Planned | Tracked in a separate pull request. |
+| 8 | End-to-end tests (Playwright) | In review (draft PR) | `tests/e2e/`, throwaway stack scripts in `tests/e2e/setup/`, `.github/workflows/e2e.yml`. |
+| 9 | Contributor and API documentation | In review (draft PR) | `CONTRIBUTING.md`, `ARCHITECTURE.md`, `CODE_OF_CONDUCT.md`, OpenAPI 3.1 document (`docs/api/openapi.yaml`) and the `/docs` viewer. |
+| 10 | Dynamic security scan (OWASP ZAP) | In review (draft PR) | Baseline scan in `.github/workflows/zap.yml`, rules in `.zap/rules.tsv`. |
 
 ## Known follow-ups
+
+- Changing your own password on the Profile page also signs out the current
+  browser session, although `SECURITY.md` says only the other sessions are
+  signed out. `tests/e2e/profile.spec.js` marks this with `test.fail()`; a
+  later pull request will fix it and remove the marker.
 
 - The `roles`, `role_user` and `social_accounts` tables are no longer used by
   any code. They are kept because existing installations have already created
