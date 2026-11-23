@@ -63,12 +63,25 @@ reported to those projects directly.
 - Public registration always creates **non-admin** users. A role field sent in
   the request is ignored.
 - Passwords must be at least 12 characters. Only administrators can list,
-  create, update or delete accounts.
+  create, update or delete accounts. Administrators cannot change their own
+  role or delete their own account.
+- Self-registered accounts must verify their email address before they can
+  use the dashboard or the API. Changing the email address on the profile page
+  requires verifying the new address. Accounts created by an administrator or
+  with `app:create-admin` are verified automatically. If a user mistypes a new
+  address, an administrator can correct it on the Users page, and the user can
+  then request a new verification link.
+- Changing a password revokes the user's OAuth access and refresh tokens and
+  signs out their other browser sessions.
 
 ### File uploads
 
 - Only images (`jpg`, `jpeg`, `png`, `webp`, max 5 MB, max 4096x4096 px) are
   accepted. Type, extension and content are all validated server side.
+- Every accepted image is decoded and re-encoded on the server (same format).
+  This removes metadata such as EXIF and GPS data and any data hidden inside
+  or appended to the file. Files that cannot be decoded as images are
+  rejected.
 - Files are stored with random, server-generated names on the `public` disk
   (`storage/app/public/uploads`). They are served through the `public/storage`
   symlink created by `php artisan storage:link`.
@@ -98,8 +111,9 @@ Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
 ### Dependency auditing
 
 - CI (`.github/workflows/ci.yml`) runs `composer validate --strict`,
-  `composer audit`, `npm audit --audit-level=moderate`, the PHPUnit suite, a
-  production Vite build and a production Docker build with an `/up` smoke test.
+  `composer audit`, `npm audit --audit-level=moderate`, Pint, Larastan
+  (level 9), ESLint, Prettier, the PHPUnit suite, a production Vite build and a
+  production Docker build with an `/up` smoke test.
 - CodeQL (`.github/workflows/codeql.yml`) scans JavaScript/TypeScript and the
   GitHub Actions workflows on every PR and weekly.
 - Dependabot (`.github/dependabot.yml`) proposes weekly grouped updates for
@@ -137,5 +151,7 @@ Named rate limiters protect login (10/min per IP, plus Laravel's lockout after
 - [ ] Database backup taken before `php artisan migrate --force`
 - [ ] At least one admin created with `php artisan app:create-admin`; no test
       accounts left
+- [ ] `MAIL_*` points to a real mail server, so verification and password
+      reset emails are delivered
 - [ ] Database port not reachable from the internet
 - [ ] CI green, including `composer audit` and `npm audit`

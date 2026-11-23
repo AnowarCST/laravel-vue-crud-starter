@@ -1,34 +1,25 @@
-# Modernisation Task Tracker
+# Modernisation task tracker
 
-Branch: `security/hardening-and-upgrade-2026`. Status reflects the working tree
-as of 2026-11-23; "Done" means implemented and verified locally, "Needs
-integration check" means implemented but the final combined verification on
-the integrated branch is still outstanding.
+Status of the 2026 security hardening and upgrade. "Done" means implemented,
+covered by tests or checks, and passing in CI.
 
 | ID | Milestone | Status | Notes |
 | --- | --- | --- | --- |
-| 0 | Prep & audit | Done | Pre-upgrade snapshots in `reports/` (local only). Open Dependabot PRs inventoried in `SECURITY_REFACTOR_PLAN.md`. |
-| 1 | Framework upgrade (PHP 8.5, Laravel 13, Passport 13) | Needs integration check | composer.json/lock upgraded. On a working-tree snapshot, `composer validate --strict`, `composer audit` (no advisories) and `php artisan test` (61 passed) ran green in the PHP 8.5.13 dev image. |
-| 2 | Frontend migration (Vue 3 + Vite + AdminLTE 4) | Needs integration check | Mix removed and Vite added (`vite.config.js`, output `public/build`). On a snapshot, `npm ci`, `npm audit` (0 vulnerabilities) and `npm run build` succeeded on Node 26.13.1. UI walkthrough of all CRUD screens still to do. |
-| 3 | Auth model | Done (scope changed) | Passport 13 retained as the API guard; Sanctum switch dropped. Registration creates non-admins only; admins come from `php artisan app:create-admin`; no seeded admin. |
-| 4 | API hardening | Done | Form Requests, admin-only account management, validated uploads, rate limiters, generic auth errors (covered by feature/security tests). OpenAPI docs: not planned for this release. |
-| 5 | Security hardening | Done | Nonce CSP + security headers middleware, strict CORS, upload lockdown, `SECURITY.md`, hardened `.env.example`. |
-| 6 | Docker & DX refresh | Needs integration check | Multi-stage `docker/Dockerfile` (dev/node-dev/prod), Apache as www-data on 8080, `/up` healthchecks, loopback-only ports, MySQL 8.4.13 not published. Verified: dev/node-dev/prod images build, prod image serves `/up` and is healthy, `docker compose config`, MySQL healthcheck. Full `docker compose up` with the bind mount not yet run. |
-| 7 | Tests & CI | Done (E2E pending) | GitHub Actions CI (PHP, frontend, Docker prod build + smoke test), CodeQL, Dependabot. Azure pipeline repaired (PHP 8.5 via Docker). Pest conversion dropped; Playwright E2E pending (see below). |
-| 8 | OSS hygiene & docs | In progress | README quickstart + Laravel 8 upgrade guide, `SECURITY.md`, `CONTEXT.md` updated. `CONTRIBUTING.md` / `ARCHITECTURE.md` not written. |
+| 1 | Framework upgrade | Done | PHP 8.5, Laravel 13, Passport 13, streamlined `bootstrap/app.php` structure. |
+| 2 | Frontend migration | Done | Laravel Mix replaced by Vite. Vue 3, Vue Router, AdminLTE 4, Bootstrap 5. |
+| 3 | Authentication | Done | Passport stays as the API guard. Registration creates regular users only, email verification is required, and admins are created with `php artisan app:create-admin`. |
+| 4 | API hardening | Done | Form Requests, policies, rate limits, generic error messages, safe image uploads with server-side re-encoding. |
+| 5 | Security hardening | Done | Nonce-based CSP and security headers, strict CORS, hardened sessions, `SECURITY.md`. |
+| 6 | Docker and developer experience | Done | Multi-stage image (dev and prod), MySQL 9.7 LTS, Mailpit, `/up` health checks, localhost-only ports. |
+| 7 | Code quality and CI | Done | Pint, Larastan level 9, ESLint, Prettier, PHPUnit, `composer audit`, `npm audit`, CodeQL and Dependabot in CI. |
+| 8 | End-to-end tests (Playwright) | Planned | Tracked in a separate pull request. |
+| 9 | Contributor and API documentation | Planned | `CONTRIBUTING.md`, `ARCHITECTURE.md`, OpenAPI documentation. Tracked in a separate pull request. |
+| 10 | Dynamic security scan (OWASP ZAP) | Planned | Tracked in a separate pull request. |
 
-Legend: Done · Needs integration check · In progress · Pending · Dropped
+## Known follow-ups
 
-## Before merging
-- [ ] Integrated branch: clean `composer install` and `npm ci`, `php artisan test`, `npm run build`, `composer audit`, `npm audit`.
-- [ ] `docker build --target prod` on the final lockfiles and `/up` smoke test (CI `docker` job does this).
-- [ ] `docker compose up -d` from a fresh clone following README, then `migrate`, `passport:keys`, `storage:link`, `app:create-admin`, log in, and exercise CRUD + image upload.
-- [ ] HTTP checks: `/.env`, `/storage/uploads/*.php` and `.html` are denied; uploaded images served with `nosniff`.
-- [ ] Map the open Dependabot PRs to the new lockfiles and close the superseded ones (coordinator).
-- [ ] Azure check passes on the PR (or the Azure integration is retired).
-
-## E2E test plan (Playwright) - pending
-- [ ] Add Playwright with config and npm scripts (`test:e2e`).
-- [ ] Create the E2E admin in a test-only setup step (no seeded default admin).
-- [ ] Specs: auth, users, categories, tags, products (upload), profile, password, errors.
-- [ ] CI: add an E2E workflow that uploads the HTML report.
+- The `roles`, `role_user` and `social_accounts` tables are no longer used by
+  any code. They are kept because existing installations have already created
+  them. A later release can drop them with a new migration and a release note.
+- Passport's JSON API (used by the Developer page) is deprecated in Passport
+  13. It still works, but a future Passport release may remove it.
