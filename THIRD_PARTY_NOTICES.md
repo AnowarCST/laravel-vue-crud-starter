@@ -87,16 +87,38 @@ include React (MIT), DOMPurify (Apache-2.0 or MPL-2.0), ieee754
 (BSD-3-Clause) and several MIT-licensed packages. The bundle also contains
 core-js, which that list does not name; core-js declares the MIT licence.
 
-### Licence comments in the built files
+### Licence files and comments in the built files
 
-The source files of Font Awesome, Bootstrap, AdminLTE and other packages
-start with a licence comment (for example
-`/*! Font Awesome Free 7.3.1 by @fontawesome ... License - https://fontawesome.com/license/free ... */`).
-The production build (`npm run build`, Vite 8) removes these comments: a
-search of `public/build/assets/` after a build found none of them, and no
-separate licence file is written there. This file lists the bundled
-packages and their licences instead, and it is copied into the production
-image with the rest of the repository.
+`npm run build` (Vite 8, configured in `vite.config.js`) writes these
+licence files next to the built assets. They are part of the production
+image and are served with the assets:
+
+- `public/build/licenses.txt` (URL `/build/licenses.txt`), made by Vite's
+  `build.license` option: every npm package bundled into the JavaScript
+  chunks, with its version, its licence identifier and the full text of its
+  `LICENSE` file. The content is Markdown; the file ends in `.txt` because
+  the production Apache configuration does not serve `.md` files. It lists
+  the packages in the table above, including Font Awesome Free (its
+  `LICENSE.txt` with the CC BY 4.0, SIL OFL 1.1 and MIT terms) and
+  swagger-ui-dist (the Apache License 2.0 text).
+- `public/build/swagger-ui-dist-NOTICE.txt` (URL
+  `/build/swagger-ui-dist-NOTICE.txt`): a copy of swagger-ui-dist's `NOTICE`
+  file, which Vite's licence file does not include.
+- `public/build/assets/swagger-ui-es-bundle.js.LICENSE.txt`: a copy of the
+  licence list of the third-party code inside the Swagger UI bundle. The
+  `/docs` viewer's JavaScript chunk keeps the bundle's comment
+  `/*! For license information please see swagger-ui-es-bundle.js.LICENSE.txt */`,
+  and the file sits next to that chunk.
+
+The build also keeps the legal comments (`@license` and `/*! ... */`) of the
+JavaScript packages in the minified JavaScript, for example those of Vue,
+Vue Router, Bootstrap, AdminLTE and SweetAlert2. The CSS minifier removes
+all comments, so the Font Awesome, Bootstrap and AdminLTE licence comments
+are not in the built CSS; their licences are in `licenses.txt`.
+
+The two copied files are listed in `extraLicenceFiles` in `vite.config.js`.
+If you add a package whose licence requires a `NOTICE` file or another
+notice that is not in its `LICENSE` file, add that file there.
 
 ## PHP packages in the production image
 
