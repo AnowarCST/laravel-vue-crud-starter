@@ -5,7 +5,16 @@ import globals from 'globals';
 
 export default [
     {
-        ignores: ['public/build/**', 'public/hot', 'vendor/**', 'node_modules/**', 'storage/**', 'bootstrap/cache/**'],
+        ignores: [
+            'public/build/**',
+            'public/hot',
+            'vendor/**',
+            'node_modules/**',
+            'storage/**',
+            'bootstrap/cache/**',
+            'tests/e2e/test-results/**',
+            'tests/e2e/playwright-report/**',
+        ],
     },
     js.configs.recommended,
     ...pluginVue.configs['flat/recommended'],
@@ -18,11 +27,20 @@ export default [
         },
     },
     {
-        files: ['vite.config.js', 'eslint.config.js'],
+        files: ['vite.config.js', 'eslint.config.js', 'playwright.config.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
             globals: { ...globals.node },
+        },
+    },
+    {
+        // Playwright tests run in Node; code passed to page.evaluate() runs in the browser.
+        files: ['tests/e2e/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: { ...globals.node, ...globals.browser },
         },
     },
     // Must stay last: turns off every rule that would conflict with Prettier.

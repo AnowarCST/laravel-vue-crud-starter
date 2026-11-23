@@ -11,8 +11,10 @@
     "production": "vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write resources/js resources/css vite.config.js eslint.config.js",
-    "format:check": "prettier --check resources/js resources/css vite.config.js eslint.config.js",
+    "format": "prettier --write resources/js resources/css vite.config.js eslint.config.js playwright.config.js \"tests/e2e/**/*.js\"",
+    "format:check": "prettier --check resources/js resources/css vite.config.js eslint.config.js playwright.config.js \"tests/e2e/**/*.js\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "audit:security": "npm audit --audit-level=moderate"
   },
   "dependencies": {
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.65.0",
     "@vitejs/plugin-vue": "^6.0.11",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
