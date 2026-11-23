@@ -155,7 +155,7 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    per-record policy check. Give every string a `max` length, and validate
    types strictly (for example `integer` and `exists:` for foreign keys).
 
-4. **Controller.** Create `app/Http/Controllers/API/V1/WidgetController.php`
+4. **Controller.** Create `app/Http/Controllers/Api/V1/WidgetController.php`
    extending `BaseController`:
    - wrap every result in `$this->sendResponse($data, 'Message')`;
    - paginate lists with `Widget::latest()->paginate(10)`;

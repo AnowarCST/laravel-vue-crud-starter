@@ -153,7 +153,7 @@ flowchart LR
 | Path | Contents |
 | --- | --- |
 | `app/Console/Commands/CreateAdmin.php` | `php artisan app:create-admin`, the only way to create the first administrator (interactive). |
-| `app/Http/Controllers/API/V1/` | API controllers. `BaseController` provides the response envelope. |
+| `app/Http/Controllers/Api/V1/` | API controllers. `BaseController` provides the response envelope. |
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
 | `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
