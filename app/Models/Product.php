@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,8 +16,6 @@ class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
     use HasFactory, SoftDeletes;
-
-    public const STATUSES = ['active', 'draft', 'archived'];
 
     /**
      * Products with this many units or fewer (but more than zero) are
@@ -40,7 +39,7 @@ class Product extends Model
      */
     protected $attributes = [
         'stock' => 0,
-        'status' => 'active',
+        'status' => ProductStatus::Active->value,
     ];
 
     /**
@@ -51,6 +50,7 @@ class Product extends Model
         return [
             'price' => 'decimal:2',
             'stock' => 'integer',
+            'status' => ProductStatus::class,
         ];
     }
 

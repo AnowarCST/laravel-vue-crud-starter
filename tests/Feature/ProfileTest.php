@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -21,7 +22,7 @@ class ProfileTest extends TestCase
             'id' => $victim->id, 'name' => 'Updated', 'email' => $user->email,
             'type' => 'admin', 'password' => 'Injected-password-123!',
         ])->assertOk()->assertJsonPath('data.name', 'Updated');
-        $this->assertSame('user', $user->refresh()->type);
+        $this->assertSame(UserType::User, $user->refresh()->type);
         $this->assertTrue(Hash::check('Test-password-123!', $user->refresh()->password));
         $this->assertNotSame('Updated', $victim->refresh()->name);
     }

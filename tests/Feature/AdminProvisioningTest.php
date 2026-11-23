@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +21,7 @@ class AdminProvisioningTest extends TestCase
             ->expectsOutput('Administrator created.')
             ->assertSuccessful();
         $admin = User::where('email', 'owner@example.com')->firstOrFail();
-        $this->assertSame('admin', $admin->type);
+        $this->assertSame(UserType::Admin, $admin->type);
         $this->assertTrue(Hash::check('Private-password-123!', $admin->password));
         $this->assertTrue($admin->hasVerifiedEmail(), 'Operator-provisioned accounts need no email verification.');
     }

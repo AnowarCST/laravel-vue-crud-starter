@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ProductStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\ProductIndexRequest;
 use App\Http\Requests\Products\ProductRequest;
@@ -38,7 +39,7 @@ class ProductController extends Controller
         if (($tagId = $request->filterInt('tag')) !== null) {
             $query->whereHas('tags', fn (Builder $tags) => $tags->where('tags.id', $tagId));
         }
-        if (($status = $request->filterText('status')) !== null) {
+        if (($status = $request->status()) !== null) {
             $query->where('status', $status);
         }
         match ($request->filterText('stock')) {
@@ -69,13 +70,13 @@ class ProductController extends Controller
             ->select('status')->selectRaw('count(*) as aggregate')
             ->groupBy('status')->pluck('aggregate', 'status');
 
-        $count = fn (string $status): int => is_numeric($byStatus[$status] ?? null) ? (int) $byStatus[$status] : 0;
+        $count = fn (ProductStatus $status): int => is_numeric($byStatus[$status->value] ?? null) ? (int) $byStatus[$status->value] : 0;
 
         return ApiResponse::success([
             'total' => Product::count(),
-            'active' => $count('active'),
-            'draft' => $count('draft'),
-            'archived' => $count('archived'),
+            'active' => $count(ProductStatus::Active),
+            'draft' => $count(ProductStatus::Draft),
+            'archived' => $count(ProductStatus::Archived),
             'low_stock' => Product::whereBetween('stock', [1, Product::LOW_STOCK_THRESHOLD])->count(),
             'out_of_stock' => Product::where('stock', 0)->count(),
         ], 'Product statistics');

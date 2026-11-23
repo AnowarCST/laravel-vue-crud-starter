@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Products;
 
+use App\Enums\ProductStatus;
 use App\Models\Product;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -68,7 +69,7 @@ class ProductRequest extends FormRequest
             'description' => ['required', 'string', 'max:1000'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'stock' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
-            'status' => ['sometimes', 'required', 'string', Rule::in(Product::STATUSES)],
+            'status' => ['sometimes', 'required', 'string', Rule::enum(ProductStatus::class)],
             'tags' => ['sometimes', 'array', 'max:50'],
             'tags.*.text' => ['required', 'string', 'max:191'],
             'photo' => ['sometimes', 'nullable', 'string', 'max:191', function (string $attribute, mixed $value, Closure $fail): void {

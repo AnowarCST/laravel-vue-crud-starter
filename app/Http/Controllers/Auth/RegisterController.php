@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\PasswordByteLength;
@@ -53,7 +54,7 @@ class RegisterController extends Controller
             'email' => $data['email'],
             'password' => $data['password'], // hashed by the model cast
         ]);
-        $user->forceFill(['type' => User::TYPE_USER])->save();
+        $user->forceFill(['type' => UserType::User])->save();
 
         return $user;
     }

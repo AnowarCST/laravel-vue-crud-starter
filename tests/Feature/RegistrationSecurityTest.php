@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserType;
 use App\Models\User;
 use Database\Seeders\UsersTableSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,7 +23,7 @@ class RegistrationSecurityTest extends TestCase
             'password_confirmation' => 'Registration-password-123!', 'type' => 'admin',
         ])->assertRedirect();
         $user = User::where('email', 'public@example.com')->firstOrFail();
-        $this->assertSame('user', $user->type);
+        $this->assertSame(UserType::User, $user->type);
         $this->assertTrue(Hash::check('Registration-password-123!', $user->password));
     }
 

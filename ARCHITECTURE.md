@@ -164,6 +164,7 @@ flowchart LR
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
 | `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
 | `app/Http/Requests/` | Form Requests: `Products/ProductRequest`, `Products/ProductIndexRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
+| `app/Enums/` | `UserType` (`admin`, `user`) and `ProductStatus` (`active`, `draft`, `archived`). |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
 | `app/Policies/` | One policy per model, found by Laravel's naming convention. |
 | `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate. |
@@ -186,8 +187,9 @@ flowchart LR
 
 ## Authorization model
 
-- **Account types.** `users.type` is `admin` or `user` (`User::TYPE_ADMIN`,
-  `User::TYPE_USER`; `User::isAdmin()`). `type` is not mass assignable. It is
+- **Account types.** `users.type` is `admin` or `user`, cast to the
+  `App\Enums\UserType` enum (`UserType::Admin`, `UserType::User`;
+  `User::isAdmin()`). `type` is not mass assignable. It is
   only set by `RegisterController` (always `user`), by
   `UserController` (administrators), and by `app:create-admin`.
 - **Policies** (`app/Policies/`):
@@ -262,7 +264,7 @@ From `database/migrations/` and `app/Models/`:
 | `users` | `id`, `name`, `type`, `email` (unique), `email_verified_at`, `password`, `remember_token`, timestamps | Model `User`. |
 | `categories` | `id`, `name`, `description`, timestamps | Model `Category`. |
 | `tags` | `id`, `name`, timestamps | Model `Tag`. |
-| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. `photo_url` is an accessor that `ProductResource` adds to responses. `sku` is empty only for products created before SKUs existed. |
+| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed; cast to `App\Enums\ProductStatus`), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. `photo_url` is an accessor that `ProductResource` adds to responses. `sku` is empty only for products created before SKUs existed. |
 | `product_tag` | `product_id`, `tag_id` | Pivot table for products and tags. |
 | `password_resets` | `email`, `token`, `created_at` | Password reset tokens (`config/auth.php`). |
 | `oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes` | | Laravel Passport. Client ids are UUIDs unless `PASSPORT_CLIENT_UUIDS=false`. |

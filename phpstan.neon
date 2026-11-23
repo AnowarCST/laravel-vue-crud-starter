@@ -7,6 +7,10 @@ parameters:
     # Level 10 additionally reports framework methods that return a plain
     # `array` (validated request input) where Eloquent expects array<string, mixed>.
     level: 9
+    # Read model casts from the body of casts() rather than from its
+    # `array<string, string>` return type, so cast attributes (enums, dates,
+    # hashed passwords) get their cast types.
+    parseModelCastsMethod: true
     paths:
         - app
         - bootstrap/app.php

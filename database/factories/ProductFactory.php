@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProductStatus;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -28,7 +29,7 @@ class ProductFactory extends Factory
             'description' => fake()->sentence(12),
             'price' => number_format(fake()->randomFloat(2, 2, 250), 2, '.', ''),
             'stock' => fake()->numberBetween(0, 200),
-            'status' => 'active',
+            'status' => ProductStatus::Active,
             'category_id' => Category::factory(),
             'photo' => null,
         ];
@@ -42,11 +43,18 @@ class ProductFactory extends Factory
         return $this->state(['stock' => $stock]);
     }
 
-    /**
-     * @param  'active'|'draft'|'archived'  $status
-     */
-    public function status(string $status): static
+    public function status(ProductStatus $status): static
     {
         return $this->state(['status' => $status]);
+    }
+
+    public function draft(): static
+    {
+        return $this->status(ProductStatus::Draft);
+    }
+
+    public function archived(): static
+    {
+        return $this->status(ProductStatus::Archived);
     }
 }

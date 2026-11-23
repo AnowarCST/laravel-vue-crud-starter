@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProductStatus;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Tag;
@@ -31,7 +32,7 @@ class SeederAndRoutingTest extends TestCase
 
         foreach (Product::with('category', 'tags')->get() as $product) {
             $this->assertMatchesRegularExpression('/^[A-Z0-9-]+$/', (string) $product->sku);
-            $this->assertContains($product->status, Product::STATUSES);
+            $this->assertContains($product->status, ProductStatus::cases());
             $this->assertNotNull($product->category, $product->name);
             $this->assertNotEmpty($product->tags, $product->name);
             $this->assertIsString($product->photo);

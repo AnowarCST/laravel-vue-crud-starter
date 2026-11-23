@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserType;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Tag;
@@ -48,12 +49,12 @@ class AuthorizationSecurityTest extends TestCase
 
         $this->actingAs($admin, 'api')->putJson('/api/user/'.$admin->id, ['type' => 'user'])
             ->assertUnprocessable()->assertJsonValidationErrors('type');
-        $this->assertSame('admin', $admin->refresh()->type);
+        $this->assertSame(UserType::Admin, $admin->refresh()->type);
 
         $this->putJson('/api/user/'.$admin->id, ['type' => 'admin', 'name' => 'Still admin'])->assertOk();
 
         $this->putJson('/api/user/'.$user->id, ['type' => 'admin'])->assertOk();
-        $this->assertSame('admin', $user->refresh()->type);
+        $this->assertSame(UserType::Admin, $user->refresh()->type);
 
         $this->putJson('/api/user/'.$user->id, ['type' => 'superuser'])
             ->assertUnprocessable()->assertJsonValidationErrors('type');
@@ -72,7 +73,7 @@ class AuthorizationSecurityTest extends TestCase
             'password' => 'Puppet-password-123!', 'type' => 'admin',
         ])->assertForbidden();
 
-        $this->assertSame('user', $user->refresh()->type);
+        $this->assertSame(UserType::User, $user->refresh()->type);
         $this->assertDatabaseMissing('users', ['email' => 'puppet@example.com']);
     }
 

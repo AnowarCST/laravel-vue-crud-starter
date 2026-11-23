@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Users;
 
+use App\Enums\UserType;
 use App\Models\User;
 use App\Rules\PasswordByteLength;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,14 +52,14 @@ class UserRequest extends FormRequest
         $required = $creating ? 'required' : 'sometimes';
         $target = $creating ? null : $this->target();
 
-        $typeRules = [$required, 'string', Rule::in(User::TYPES)];
+        $type = Rule::enum(UserType::class);
         if ($target && $target->is($this->user())) {
             // Administrators cannot demote (or otherwise change) themselves.
-            $typeRules[] = Rule::in([$target->type]);
+            $type->only($target->type);
         }
 
         return [
-            'type' => $typeRules,
+            'type' => [$required, 'string', $type],
             'name' => [$required, 'string', 'max:191'],
             'email' => [$required, 'string', 'email', 'max:191',
                 Rule::unique('users', 'email')->ignore($target?->getKey())],
@@ -72,7 +73,7 @@ class UserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'type.in' => 'The selected account type is invalid or cannot be changed for your own account.',
+            'type.enum' => 'The selected account type is invalid or cannot be changed for your own account.',
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -47,7 +48,7 @@ class UserTest extends TestCase
             ->assertForbidden();
         $this->putJson('/api/user/'.$user->id, ['type' => 'admin'])->assertForbidden();
         $this->deleteJson('/api/user/'.$victim->id)->assertForbidden();
-        $this->assertSame('user', $user->refresh()->type);
+        $this->assertSame(UserType::User, $user->refresh()->type);
         $this->assertTrue(Hash::check('Test-password-123!', $victim->refresh()->password));
         $this->assertDatabaseMissing('users', ['email' => 'attacker@example.com']);
     }

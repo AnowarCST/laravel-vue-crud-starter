@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -29,13 +30,18 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$passwordHash ??= Hash::make(self::PASSWORD),
             'remember_token' => Str::random(10),
-            'type' => User::TYPE_USER,
+            'type' => UserType::User,
         ];
     }
 
     public function admin(): static
     {
-        return $this->state(fn () => ['type' => User::TYPE_ADMIN]);
+        return $this->type(UserType::Admin);
+    }
+
+    public function type(UserType $type): static
+    {
+        return $this->state(['type' => $type]);
     }
 
     public function unverified(): static
