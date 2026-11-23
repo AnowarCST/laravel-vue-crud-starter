@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -11,13 +11,12 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;
-
-    private const NOT_VERIFIED = ['message' => 'Your email address is not verified.'];
 
     public function test_registration_sends_exactly_one_verification_email(): void
     {
@@ -40,23 +39,38 @@ class EmailVerificationTest extends TestCase
         $this->get('/email/verify')->assertOk();
     }
 
-    public function test_unverified_users_cannot_use_the_spa_or_the_api(): void
+    public function test_unverified_users_cannot_use_the_spa(): void
     {
-        $user = User::factory()->unverified()->create();
-        $this->actingAs($user);
+        $this->actingAs(User::factory()->unverified()->create());
         $this->get('/dashboard')->assertRedirect('/email/verify');
         $this->get('/products/12')->assertRedirect('/email/verify');
+    }
 
-        $this->actingAs($user, 'api');
+    /**
+     * Including ids that do not exist: the answer must not reveal them.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function apiRequests(): iterable
+    {
         foreach ([
             ['GET', '/api/profile'], ['PUT', '/api/profile'], ['POST', '/api/change-password'],
             ['GET', '/api/tag/list'], ['GET', '/api/category/list'], ['POST', '/api/product/upload'],
-            ['GET', '/api/user'], ['GET', '/api/product'], ['POST', '/api/product'],
-            ['GET', '/api/category'], ['DELETE', '/api/tag/1'],
+            ['GET', '/api/product/stats'], ['GET', '/api/user'], ['GET', '/api/user/1'],
+            ['GET', '/api/product'], ['POST', '/api/product'], ['GET', '/api/product/999'],
+            ['PUT', '/api/product/999'], ['GET', '/api/category'], ['PATCH', '/api/category/999'],
+            ['DELETE', '/api/tag/1'],
         ] as [$method, $uri]) {
-            $this->json($method, $uri)->assertForbidden()->assertExactJson(self::NOT_VERIFIED);
+            yield $method.' '.$uri => [$method, $uri];
         }
+    }
 
+    #[DataProvider('apiRequests')]
+    public function test_unverified_users_cannot_use_the_api(string $method, string $uri): void
+    {
+        $this->actingAsUnverifiedUser();
+
+        $this->assertEmailNotVerified($this->json($method, $uri));
         $this->getJson('/api/version')->assertOk();
     }
 
@@ -126,7 +140,7 @@ class EmailVerificationTest extends TestCase
     public function test_accounts_created_by_an_administrator_are_verified_without_an_email(): void
     {
         Notification::fake();
-        $this->actingAs(User::factory()->admin()->create(), 'api');
+        $this->actingAsAdmin();
 
         $id = $this->jsonInt($this->postJson('/api/user', [
             'type' => 'user', 'name' => 'Staff', 'email' => 'staff@example.com',
@@ -162,8 +176,7 @@ class EmailVerificationTest extends TestCase
             return $notifiable->getEmailForVerification() === 'changed@example.com';
         });
 
-        $this->actingAs($user, 'api')->getJson('/api/profile')
-            ->assertForbidden()->assertExactJson(self::NOT_VERIFIED);
+        $this->assertEmailNotVerified($this->actingAs($user, 'api')->getJson('/api/profile'));
     }
 
     public function test_upgrade_migration_marks_existing_accounts_as_verified(): void

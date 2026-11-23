@@ -1,16 +1,15 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Auth;
 
 use App\Enums\UserType;
 use App\Models\User;
-use Database\Seeders\UsersTableSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
 use Tests\TestCase;
 
-class RegistrationSecurityTest extends TestCase
+class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -25,11 +24,5 @@ class RegistrationSecurityTest extends TestCase
         $user = User::where('email', 'public@example.com')->firstOrFail();
         $this->assertSame(UserType::User, $user->type);
         $this->assertTrue(Hash::check('Registration-password-123!', $user->password));
-    }
-
-    public function test_database_seeding_does_not_provision_a_known_admin(): void
-    {
-        $this->seed(UsersTableSeeder::class);
-        $this->assertDatabaseCount('users', 0);
     }
 }

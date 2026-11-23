@@ -1,8 +1,9 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use Database\Factories\UserFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
@@ -61,7 +62,7 @@ class PassportIntegrationTest extends TestCase
 
         $this->app['auth']->forgetGuards();
         $this->withToken($token)->postJson('/api/change-password', [
-            'current_password' => 'Test-password-123!',
+            'current_password' => UserFactory::PASSWORD,
             'new_password' => 'Rotated-password-123!',
             'confirm_password' => 'Rotated-password-123!',
         ])->assertOk();

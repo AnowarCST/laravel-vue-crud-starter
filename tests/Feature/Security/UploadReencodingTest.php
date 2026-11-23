@@ -1,8 +1,7 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Security;
 
-use App\Models\User;
 use GdImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -25,7 +24,7 @@ class UploadReencodingTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
-        $this->actingAs(User::factory()->create(), 'api');
+        $this->actingAsUser();
     }
 
     public function test_payloads_inside_and_after_a_png_are_not_stored(): void

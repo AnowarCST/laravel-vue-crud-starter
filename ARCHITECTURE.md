@@ -186,7 +186,7 @@ flowchart LR
 | `resources/js/` | Vite entries (`app.js`, `auth.js`, `api-docs.js`), the root component `App.vue`, `routes.js`, `Gate.js`, `components/` and `lib/` helpers. |
 | `resources/views/` | Blade views: SPA shell (`home.blade.php`), guest layout (`layouts/master.blade.php`), auth pages, `api-docs.blade.php`, Passport consent page. |
 | `routes/web.php`, `routes/api.php` | Web and API routes. |
-| `tests/Feature/`, `tests/Unit/` | PHPUnit tests. They use an in-memory SQLite database. |
+| `tests/Feature/`, `tests/Unit/` | PHPUnit tests, using an in-memory SQLite database. `tests/Feature/` is grouped by area: `Api/` (one folder per resource, plus `ResponseFieldsTest`, which pins the fields of every response), `Auth/`, `Security/`, `Docs/`, `Database/` (migrations and seeders) and `Web/`. Shared helpers are in `tests/Concerns/` (`actingAsAdmin()`, `actingAsUser()`, `actingAsUnverifiedUser()`, `assertApiSuccess()` and other envelope assertions), used by `tests/TestCase.php`. |
 | `tests/e2e/` | Playwright end-to-end tests, and the scripts and Compose file for the throwaway stack they run against (`setup/`, `compose.yaml`). |
 | `.zap/rules.tsv` | Rules for the OWASP ZAP baseline scan. |
 | `.github/` | CI, end-to-end tests, ZAP scan, CodeQL and Dependabot configuration. |

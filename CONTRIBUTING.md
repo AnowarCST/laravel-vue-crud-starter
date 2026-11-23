@@ -198,14 +198,18 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    `App.vue`. `meta.admin` and `$gate.isAdmin()` only hide UI; the API must
    enforce every rule on its own.
 
-8. **Tests.** Add `tests/Feature/WidgetTest.php` with `RefreshDatabase` and
-   `actingAs($user, 'api')`. Cover at least:
+8. **Tests.** Add `tests/Feature/Api/Widgets/WidgetTest.php` with
+   `RefreshDatabase`. Sign in with `actingAsAdmin()` or `actingAsUser()` and
+   check successful responses with `assertApiSuccess($response, 'Message')`
+   (helpers in `tests/Concerns/`). Use a `#[DataProvider]` for lists of
+   invalid inputs. Add the widget's fields to `tests/Feature/Api/ResponseFieldsTest.php`.
+   Cover at least:
    - the happy path for create, read, update and delete;
    - `401` for guests;
    - `422` for invalid input, including wrong types (an array where a string
      is expected);
    - `403` when a regular user tries an administrator-only action;
-   - `404` for an unknown id.
+   - `404` for an unknown id (`assertGenericNotFound()`).
 
    `EmailVerificationTest` already checks that unverified accounts get `403`
    on every API route.

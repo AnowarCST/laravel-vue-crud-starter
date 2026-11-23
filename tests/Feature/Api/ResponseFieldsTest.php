@@ -1,11 +1,12 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Api;
 
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Tag;
 use App\Models\User;
+use Database\Factories\UserFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,11 +18,9 @@ use Tests\TestCase;
  * docs/api/openapi.yaml and used by the SPA. A field that is added, removed
  * or renamed by mistake (for example a secret column) fails here.
  */
-class ApiResponseFieldsTest extends TestCase
+class ResponseFieldsTest extends TestCase
 {
     use RefreshDatabase;
-
-    private const ENVELOPE = ['success', 'data', 'message'];
 
     private const PAGINATOR = ['current_page', 'first_page_url', 'from', 'last_page', 'last_page_url',
         'links' => ['*' => ['url', 'label', 'page', 'active']], 'next_page_url', 'path', 'per_page', 'prev_page_url', 'to', 'total'];
@@ -57,9 +56,8 @@ class ApiResponseFieldsTest extends TestCase
 
     public function test_user_and_profile_responses(): void
     {
-        $admin = User::factory()->admin()->create();
+        $admin = $this->actingAsAdmin();
         $user = User::factory()->create();
-        $this->actingAs($admin, 'api');
 
         $this->getJson('/api/user')->assertOk()->assertExactJsonStructure(self::page(self::USER));
         $this->getJson('/api/user/'.$user->id)->assertOk()->assertExactJsonStructure(self::envelope(self::USER));
@@ -75,14 +73,14 @@ class ApiResponseFieldsTest extends TestCase
         $this->putJson('/api/profile', ['name' => 'Me', 'email' => $admin->email])
             ->assertOk()->assertExactJsonStructure(self::envelope(self::USER));
         $this->postJson('/api/change-password', [
-            'current_password' => 'Test-password-123!', 'new_password' => 'Another-password-123!',
+            'current_password' => UserFactory::PASSWORD, 'new_password' => 'Another-password-123!',
             'confirm_password' => 'Another-password-123!',
         ])->assertOk()->assertExactJson(['success' => true, 'data' => [], 'message' => 'Password Has been updated']);
     }
 
     public function test_category_responses(): void
     {
-        $this->actingAs(User::factory()->admin()->create(), 'api');
+        $this->actingAsAdmin();
         $category = Category::factory()->create(['name' => 'Kitchen']);
 
         $this->getJson('/api/category')->assertOk()->assertExactJsonStructure(self::page(self::CATEGORY));
@@ -103,8 +101,8 @@ class ApiResponseFieldsTest extends TestCase
 
     public function test_tag_responses(): void
     {
-        $this->actingAs(User::factory()->admin()->create(), 'api');
-        $tag = Tag::create(['name' => 'Bestseller']);
+        $this->actingAsAdmin();
+        $tag = Tag::factory()->create(['name' => 'Bestseller']);
 
         $this->getJson('/api/tag')->assertOk()->assertExactJsonStructure(self::page(self::TAG));
         $this->getJson('/api/tag/list')->assertOk()
@@ -118,9 +116,9 @@ class ApiResponseFieldsTest extends TestCase
 
     public function test_product_read_responses_include_the_category_and_tags(): void
     {
-        $this->actingAs(User::factory()->create(), 'api');
+        $this->actingAsUser();
         $product = Product::factory()->create();
-        $product->tags()->attach(Tag::create(['name' => 'Bestseller']));
+        $product->tags()->attach(Tag::factory()->create(['name' => 'Bestseller']));
         $orphan = Product::factory()->create();
         Category::query()->whereKey($orphan->category_id)->delete();
 
@@ -139,7 +137,7 @@ class ApiResponseFieldsTest extends TestCase
     public function test_product_write_responses_contain_only_the_saved_fields(): void
     {
         Storage::fake('public');
-        $this->actingAs(User::factory()->admin()->create(), 'api');
+        $this->actingAsAdmin();
         $category = Category::factory()->create();
         $payload = ['name' => 'Lamp', 'description' => 'A lamp.', 'price' => '5', 'category_id' => $category->id];
         $created = array_values(array_diff(self::PRODUCT, ['photo', 'deleted_at']));
@@ -164,12 +162,10 @@ class ApiResponseFieldsTest extends TestCase
 
     public function test_every_success_response_uses_the_envelope(): void
     {
-        $this->actingAs(User::factory()->create(), 'api');
+        $this->actingAsUser();
 
         foreach (['/api/profile', '/api/category', '/api/category/list', '/api/tag', '/api/tag/list', '/api/product', '/api/product/stats'] as $uri) {
-            $response = $this->getJson($uri)->assertOk()->assertJsonPath('success', true);
-            $this->assertSame(self::ENVELOPE, array_keys((array) $response->json()), $uri);
-            $this->assertIsString($response->json('message'), $uri);
+            $this->assertApiSuccess($this->getJson($uri));
         }
     }
 }

@@ -1,8 +1,9 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Security;
 
 use App\Models\User;
+use Database\Factories\UserFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
 use Tests\TestCase;
 
-class PasswordTokenSecurityTest extends TestCase
+class PasswordTokenRevocationTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -43,7 +44,7 @@ class PasswordTokenSecurityTest extends TestCase
         $otherTokenId = $this->issueToken($other);
         $oldRememberToken = $user->remember_token;
         $this->actingAs($user, 'api')->postJson('/api/change-password', [
-            'current_password' => 'Test-password-123!', 'new_password' => 'Rotated-password-123!',
+            'current_password' => UserFactory::PASSWORD, 'new_password' => 'Rotated-password-123!',
             'confirm_password' => 'Rotated-password-123!',
         ])->assertOk();
         $this->assertDatabaseHas('oauth_access_tokens', ['id' => $tokenId, 'revoked' => true]);
@@ -55,7 +56,7 @@ class PasswordTokenSecurityTest extends TestCase
 
     public function test_administrator_password_reset_also_revokes_existing_tokens(): void
     {
-        $admin = User::factory()->create(['type' => 'admin']);
+        $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
         $tokenId = $this->issueToken($user);
         $this->actingAs($admin, 'api')->putJson('/api/user/'.$user->id, [
