@@ -37,6 +37,8 @@ return new class extends Migration
      */
     public function getConnection(): ?string
     {
-        return $this->connection ?? config('passport.connection');
+        $connection = config('passport.connection');
+
+        return $this->connection ?? (is_string($connection) ? $connection : null);
     }
 };

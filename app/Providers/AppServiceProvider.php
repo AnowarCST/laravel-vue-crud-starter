@@ -2,11 +2,9 @@
 
 namespace App\Providers;
 
-use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -30,25 +28,17 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureProxies();
-        $this->configureAuthorization();
         $this->configureRateLimiting();
     }
 
     protected function configureProxies(): void
     {
-        $proxies = trim((string) config('app.trusted_proxies'));
+        $proxies = config('app.trusted_proxies');
+        $proxies = is_string($proxies) ? trim($proxies) : '';
 
         if ($proxies !== '') {
             TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
         }
-    }
-
-    protected function configureAuthorization(): void
-    {
-        // Model policies (App\Policies\*Policy) are auto-discovered. These
-        // gates remain for coarse role checks.
-        Gate::define('isAdmin', fn (User $user): bool => $user->isAdmin());
-        Gate::define('isUser', fn (User $user): bool => $user->type === User::TYPE_USER);
     }
 
     protected function configurePassport(): void

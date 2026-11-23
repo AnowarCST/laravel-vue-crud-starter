@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+    # Level 9 is the strictest level this codebase passes without a baseline.
+    # Level 10 additionally reports framework methods that return a plain
+    # `array` (validated request input) where Eloquent expects array<string, mixed>.
+    level: 9
+    paths:
+        - app
+        - bootstrap/app.php
+        - bootstrap/providers.php
+        - config
+        - database
+        - routes
+        - tests

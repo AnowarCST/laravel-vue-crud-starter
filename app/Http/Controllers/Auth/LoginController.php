@@ -20,11 +20,11 @@ class LoginController extends Controller
 
     use AuthenticatesUsers;
 
-    protected $redirectTo = '/dashboard';
+    protected string $redirectTo = '/dashboard';
 
-    protected $maxAttempts = 5;
+    protected int $maxAttempts = 5;
 
-    protected $decayMinutes = 1;
+    protected int $decayMinutes = 1;
 
     public function __construct()
     {

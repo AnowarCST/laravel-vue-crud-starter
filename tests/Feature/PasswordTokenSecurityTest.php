@@ -6,8 +6,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
-use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
 use Illuminate\Support\Str;
+use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
 use Tests\TestCase;
 
 class PasswordTokenSecurityTest extends TestCase
@@ -50,7 +50,7 @@ class PasswordTokenSecurityTest extends TestCase
         $this->assertDatabaseHas('oauth_refresh_tokens', ['access_token_id' => $tokenId, 'revoked' => true]);
         $this->assertDatabaseHas('oauth_access_tokens', ['id' => $otherTokenId, 'revoked' => false]);
         $this->assertDatabaseHas('oauth_refresh_tokens', ['access_token_id' => $otherTokenId, 'revoked' => false]);
-        $this->assertNotSame($oldRememberToken, $user->fresh()->remember_token);
+        $this->assertNotSame($oldRememberToken, $user->refresh()->remember_token);
     }
 
     public function test_administrator_password_reset_also_revokes_existing_tokens(): void
@@ -64,6 +64,7 @@ class PasswordTokenSecurityTest extends TestCase
         $this->assertDatabaseHas('oauth_access_tokens', ['id' => $tokenId, 'revoked' => true]);
         $this->assertDatabaseHas('oauth_refresh_tokens', ['access_token_id' => $tokenId, 'revoked' => true]);
     }
+
     public function test_recovery_password_reset_revokes_tokens_and_rejects_short_passwords(): void
     {
         $this->withoutMiddleware(CreateFreshApiToken::class);
@@ -82,5 +83,4 @@ class PasswordTokenSecurityTest extends TestCase
         $this->assertDatabaseHas('oauth_access_tokens', ['id' => $tokenId, 'revoked' => true]);
         $this->assertDatabaseHas('oauth_refresh_tokens', ['access_token_id' => $tokenId, 'revoked' => true]);
     }
-
 }

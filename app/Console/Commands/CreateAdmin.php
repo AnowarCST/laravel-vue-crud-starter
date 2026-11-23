@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Rules\PasswordByteLength;
 use App\Models\User;
+use App\Rules\PasswordByteLength;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
@@ -45,7 +45,8 @@ class CreateAdmin extends Command
             'email' => $data['email'],
             'password' => $data['password'], // hashed by the model cast
         ]);
-        $admin->forceFill(['type' => User::TYPE_ADMIN])->save();
+        // Provisioned by an operator, so no email verification step is needed.
+        $admin->forceFill(['type' => User::TYPE_ADMIN, 'email_verified_at' => now()])->save();
         $this->info('Administrator created.');
 
         return self::SUCCESS;

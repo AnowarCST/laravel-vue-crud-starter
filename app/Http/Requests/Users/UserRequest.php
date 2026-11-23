@@ -39,9 +39,12 @@ class UserRequest extends FormRequest
      */
     public function target(): User
     {
-        return $this->target ??= User::findOrFail($this->route('user'));
+        return $this->target ??= User::query()->whereKey($this->route('user'))->firstOrFail();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         $creating = $this->isMethod('post');
@@ -63,6 +66,9 @@ class UserRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

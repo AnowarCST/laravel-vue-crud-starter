@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -11,7 +12,13 @@ use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 use Laravel\Passport\Passport;
 
-class User extends Authenticatable implements OAuthenticatable
+/**
+ * Self-registered accounts must verify their email address before they can
+ * use the SPA or the API (the "verified" middleware). Accounts created by an
+ * administrator or by `php artisan app:create-admin` are marked as verified
+ * when they are created.
+ */
+class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -98,23 +105,5 @@ class User extends Authenticatable implements OAuthenticatable
     public function isAdmin(): bool
     {
         return $this->type === self::TYPE_ADMIN;
-    }
-
-    /**
-     * Get the profile photo URL attribute.
-     */
-    public function getPhotoAttribute(): string
-    {
-        return 'https://www.gravatar.com/avatar/'.md5(strtolower((string) $this->email)).'.jpg?s=200&d=mm';
-    }
-
-    public function roles()
-    {
-        return $this->belongsToMany(Role::class);
-    }
-
-    public function assignRole(Role $role)
-    {
-        return $this->roles()->save($role);
     }
 }

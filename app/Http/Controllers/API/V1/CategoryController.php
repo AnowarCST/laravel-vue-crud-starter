@@ -3,33 +3,34 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CategoryController extends BaseController
 {
-    public function index()
+    public function index(): JsonResponse
     {
         return $this->sendResponse(Category::latest()->paginate(10), 'Category list');
     }
 
-    public function list()
+    public function list(): JsonResponse
     {
         return $this->sendResponse(Category::pluck('name', 'id'), 'Category list');
     }
 
-    public function show($id)
+    public function show(string $id): JsonResponse
     {
         return $this->sendResponse(Category::findOrFail($id), 'Category Details');
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Category::class);
 
         return $this->sendResponse(Category::create($this->validated($request)), 'Category Created Successfully');
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, string $id): JsonResponse
     {
         $record = Category::findOrFail($id);
         $this->authorize('update', $record);
@@ -38,7 +39,7 @@ class CategoryController extends BaseController
         return $this->sendResponse($record, 'Category Information has been updated');
     }
 
-    public function destroy($id)
+    public function destroy(string $id): JsonResponse
     {
         $record = Category::findOrFail($id);
         $this->authorize('delete', $record);
@@ -47,9 +48,12 @@ class CategoryController extends BaseController
         return $this->sendResponse($record, 'Category has been Deleted');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        return $this->validate($request, [
             'name' => ['required', 'string', 'max:191'],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);

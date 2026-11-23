@@ -26,7 +26,7 @@ class UserTest extends TestCase
             ->assertOk()->assertJsonPath('data.name', 'Updated');
         $this->patchJson('/api/user/'.$user->id, ['password' => 'Replacement-password-123!'])
             ->assertOk();
-        $this->assertTrue(Hash::check('Replacement-password-123!', $user->fresh()->password));
+        $this->assertTrue(Hash::check('Replacement-password-123!', $user->refresh()->password));
         $this->deleteJson('/api/user/'.$user->id)->assertOk();
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
     }
@@ -47,8 +47,8 @@ class UserTest extends TestCase
             ->assertForbidden();
         $this->putJson('/api/user/'.$user->id, ['type' => 'admin'])->assertForbidden();
         $this->deleteJson('/api/user/'.$victim->id)->assertForbidden();
-        $this->assertSame('user', $user->fresh()->type);
-        $this->assertTrue(Hash::check('Test-password-123!', $victim->fresh()->password));
+        $this->assertSame('user', $user->refresh()->type);
+        $this->assertTrue(Hash::check('Test-password-123!', $victim->refresh()->password));
         $this->assertDatabaseMissing('users', ['email' => 'attacker@example.com']);
     }
 
@@ -71,8 +71,8 @@ class UserTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('password');
         $this->putJson('/api/user/'.$user->id, ['name' => 'Updated', 'email_verified_at' => now()->toISOString()])
             ->assertOk();
-        $this->assertNull($user->fresh()->email_verified_at);
-        $this->assertTrue(Hash::check('Test-password-123!', $user->fresh()->password));
+        $this->assertNull($user->refresh()->email_verified_at);
+        $this->assertTrue(Hash::check('Test-password-123!', $user->refresh()->password));
     }
 
     public function test_guests_cannot_manage_accounts(): void

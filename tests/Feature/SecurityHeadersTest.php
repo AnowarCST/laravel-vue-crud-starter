@@ -67,11 +67,11 @@ class SecurityHeadersTest extends TestCase
         Vite::useHotFile($hot);
 
         try {
-            $csp = $this->get('/')->headers->get('Content-Security-Policy');
+            $csp = (string) $this->get('/')->headers->get('Content-Security-Policy');
             $this->assertStringNotContainsString('localhost:5173', $csp);
 
             $this->app->detectEnvironment(fn () => 'local');
-            $csp = $this->get('/')->headers->get('Content-Security-Policy');
+            $csp = (string) $this->get('/')->headers->get('Content-Security-Policy');
             $this->assertMatchesRegularExpression("~script-src 'self' 'nonce-[^']+' http://localhost:5173;~", $csp);
             $this->assertStringContainsString("style-src 'self' 'unsafe-inline' http://localhost:5173;", $csp);
             $this->assertStringContainsString("connect-src 'self' http://localhost:5173 ws://localhost:5173;", $csp);
@@ -87,7 +87,7 @@ class SecurityHeadersTest extends TestCase
 
         $response = $this->getJson('/api/__boom')->assertStatus(500);
         $response->assertExactJson(['message' => 'Server Error']);
-        $this->assertStringNotContainsString('secret detail', $response->getContent());
+        $this->assertStringNotContainsString('secret detail', (string) $response->getContent());
     }
 
     public function test_cors_only_allows_the_application_origin(): void

@@ -19,7 +19,7 @@ class CategoryTest extends TestCase
                 ->assertUnprocessable()->assertJsonValidationErrors('name');
             $created = $this->postJson('/api/'.$resource, ['name' => 'Initial', 'description' => 'Details'])
                 ->assertOk()->assertJsonPath('data.name', 'Initial');
-            $id = $created->json('data.id');
+            $id = $this->jsonInt($created, 'data.id');
             $this->getJson('/api/'.$resource)->assertOk();
             $this->getJson('/api/'.$resource.'/list')->assertOk();
             $this->getJson('/api/'.$resource.'/'.$id)->assertOk();
@@ -35,7 +35,7 @@ class CategoryTest extends TestCase
         $this->actingAs(User::factory()->create(), 'api');
         foreach (['category', 'tag'] as $resource) {
             $response = $this->postJson('/api/'.$resource, ['name' => 'Shared catalogue'])->assertOk();
-            $this->deleteJson('/api/'.$resource.'/'.$response->json('data.id'))->assertForbidden();
+            $this->deleteJson('/api/'.$resource.'/'.$this->jsonInt($response, 'data.id'))->assertForbidden();
         }
     }
 

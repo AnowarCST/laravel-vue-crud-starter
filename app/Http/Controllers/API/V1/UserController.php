@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Requests\Users\UserRequest;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 
 /**
  * Administrator-only account management (see App\Policies\UserPolicy).
@@ -12,24 +13,26 @@ use App\Models\User;
  */
 class UserController extends BaseController
 {
-    public function index()
+    public function index(): JsonResponse
     {
         $this->authorize('viewAny', User::class);
 
         return $this->sendResponse(User::latest()->paginate(10), 'Users list');
     }
 
-    public function store(UserRequest $request)
+    public function store(UserRequest $request): JsonResponse
     {
         $data = $request->validated();
 
+        // The administrator chose this address, so the account does not have
+        // to go through the self-registration email verification step.
         $user = new User($request->safe()->only(['name', 'email', 'password']));
-        $user->forceFill(['type' => $data['type']])->save();
+        $user->forceFill(['type' => $data['type'], 'email_verified_at' => now()])->save();
 
         return $this->sendResponse($user, 'User Created Successfully');
     }
 
-    public function show($id)
+    public function show(string $id): JsonResponse
     {
         $this->authorize('viewAny', User::class);
         $user = User::findOrFail($id);
@@ -38,7 +41,7 @@ class UserController extends BaseController
         return $this->sendResponse($user, 'User Details');
     }
 
-    public function update(UserRequest $request, $id)
+    public function update(UserRequest $request, string $id): JsonResponse
     {
         $user = $request->target();
 
@@ -55,7 +58,7 @@ class UserController extends BaseController
         return $this->sendResponse($user, 'User Information has been updated');
     }
 
-    public function destroy($id)
+    public function destroy(string $id): JsonResponse
     {
         $this->authorize('viewAny', User::class);
         $user = User::findOrFail($id);

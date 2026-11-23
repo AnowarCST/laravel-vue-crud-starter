@@ -21,9 +21,9 @@ class ProfileTest extends TestCase
             'id' => $victim->id, 'name' => 'Updated', 'email' => $user->email,
             'type' => 'admin', 'password' => 'Injected-password-123!',
         ])->assertOk()->assertJsonPath('data.name', 'Updated');
-        $this->assertSame('user', $user->fresh()->type);
-        $this->assertTrue(Hash::check('Test-password-123!', $user->fresh()->password));
-        $this->assertNotSame('Updated', $victim->fresh()->name);
+        $this->assertSame('user', $user->refresh()->type);
+        $this->assertTrue(Hash::check('Test-password-123!', $user->refresh()->password));
+        $this->assertNotSame('Updated', $victim->refresh()->name);
     }
 
     public function test_profile_rejects_missing_fields_and_duplicate_email(): void
@@ -50,8 +50,8 @@ class ProfileTest extends TestCase
             'current_password' => 'Test-password-123!', 'new_password' => 'New-password-123!',
             'confirm_password' => 'New-password-123!',
         ])->assertOk();
-        $this->assertTrue(Hash::check('New-password-123!', $user->fresh()->password));
-        $this->assertFalse(Hash::check('Test-password-123!', $user->fresh()->password));
+        $this->assertTrue(Hash::check('New-password-123!', $user->refresh()->password));
+        $this->assertFalse(Hash::check('Test-password-123!', $user->refresh()->password));
     }
 
     public function test_guests_cannot_access_profile_or_change_password(): void

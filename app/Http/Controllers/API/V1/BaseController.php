@@ -3,72 +3,37 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BaseController extends Controller
 {
     /**
-     * success response method.
-     *
-     * @param $result
-     * @param $message
-     *
-     * @return \Illuminate\Http\Response
+     * Wrap a successful result in the API's standard response envelope.
      */
-    public function sendResponse($result, $message)
+    public function sendResponse(mixed $result, string $message): JsonResponse
     {
-        $response = [
+        return response()->json([
             'success' => true,
-            'data'    => $result,
+            'data' => $result,
             'message' => $message,
-        ];
-
-
-        return response()->json($response, 200);
+        ]);
     }
 
-
     /**
-     * return error response.
-     *
-     * @param $error
-     * @param  array  $errorMessages
-     * @param  int  $code
-     *
-     * @return \Illuminate\Http\Response
+     * The account making the request. Every route that calls this is behind
+     * the "auth:api" middleware, so a missing user is never expected here.
      */
-    public function sendError($error, $errorMessages = [], $code = 404)
+    protected function authenticatedUser(Request $request): User
     {
-        $response = [
-            'success' => false,
-            'message' => $error,
-        ];
+        $user = $request->user();
 
-
-        if (!empty($errorMessages)) {
-            $response['data'] = $errorMessages;
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
         }
 
-
-        return response()->json($response, $code);
-    }
-
-
-    /**
-     * return Unauthorized response.
-     *
-     * @param $error
-     * @param  int  $code
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function unauthorizedResponse($error = 'Forbidden', $code = 403)
-    {
-        $response = [
-            'success' => false,
-            'message' => $error,
-        ];
-
-        return response()->json($response, $code);
+        return $user;
     }
 }

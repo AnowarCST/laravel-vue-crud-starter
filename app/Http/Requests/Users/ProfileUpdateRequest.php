@@ -15,12 +15,15 @@ class ProfileUpdateRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:191'],
             'email' => ['required', 'string', 'email', 'max:191',
-                Rule::unique('users', 'email')->ignore($this->user()->getKey())],
+                Rule::unique('users', 'email')->ignore($this->user()?->getKey())],
         ];
     }
 }

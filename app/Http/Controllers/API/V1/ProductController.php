@@ -5,29 +5,35 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Requests\Products\ProductRequest;
 use App\Models\Product;
 use App\Models\Tag;
+use App\Support\ImageReencoder;
+use App\Support\UnreadableImageException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class ProductController extends BaseController
 {
-    public function index()
+    public function index(): JsonResponse
     {
         return $this->sendResponse(Product::latest()->with('category', 'tags')->paginate(10), 'Product list');
     }
 
-    public function show($id)
+    public function show(string $id): JsonResponse
     {
         return $this->sendResponse(Product::with('category', 'tags')->findOrFail($id), 'Product Details');
     }
 
-    public function store(ProductRequest $request)
+    public function store(ProductRequest $request): JsonResponse
     {
         $this->authorize('create', Product::class);
 
         $product = DB::transaction(function () use ($request) {
             $product = Product::create($request->safe()->except('tags'));
-            $this->syncTags($product, $request->validated('tags', []));
+            $this->syncTags($product, $request->tagNames());
 
             return $product;
         });
@@ -35,7 +41,7 @@ class ProductController extends BaseController
         return $this->sendResponse($product, 'Product Created Successfully');
     }
 
-    public function update(ProductRequest $request, $id)
+    public function update(ProductRequest $request, string $id): JsonResponse
     {
         $product = Product::findOrFail($id);
         $this->authorize('update', $product);
@@ -44,7 +50,7 @@ class ProductController extends BaseController
         DB::transaction(function () use ($request, $product) {
             $product->update($request->safe()->except('tags'));
             if ($request->has('tags')) {
-                $this->syncTags($product, $request->validated('tags', []));
+                $this->syncTags($product, $request->tagNames());
             }
         });
 
@@ -58,16 +64,19 @@ class ProductController extends BaseController
         return $this->sendResponse($product, 'Product Information has been updated');
     }
 
-    private function syncTags(Product $product, array $tags): void
+    /**
+     * @param  list<string>  $names
+     */
+    private function syncTags(Product $product, array $names): void
     {
         $ids = [];
-        foreach ($tags as $tag) {
-            $ids[] = Tag::firstOrCreate(['name' => $tag['text']])->id;
+        foreach ($names as $name) {
+            $ids[] = Tag::firstOrCreate(['name' => $name])->id;
         }
         $product->tags()->sync($ids);
     }
 
-    public function destroy($id)
+    public function destroy(string $id): JsonResponse
     {
         $product = Product::findOrFail($id);
         $this->authorize('delete', $product);
@@ -76,7 +85,7 @@ class ProductController extends BaseController
         return $this->sendResponse($product, 'Product has been Deleted');
     }
 
-    public function upload(Request $request)
+    public function upload(Request $request, ImageReencoder $reencoder): JsonResponse
     {
         $this->authorize('create', Product::class);
 
@@ -85,10 +94,26 @@ class ProductController extends BaseController
                 'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=4096,max_height=4096'],
         ]);
 
-        // store() names the file Str::random(40) plus an extension guessed from
-        // the detected MIME type (never the client-supplied name/extension),
-        // e.g. uploads/<40 alphanumerics>.png on the "public" disk.
-        $path = $request->file('file')->store('uploads', 'public');
+        $file = $request->file('file');
+
+        // Store a re-encoded copy instead of the uploaded bytes so metadata
+        // (EXIF/GPS) and anything hidden in or appended to the file is
+        // dropped. The format is detected from the file contents, never taken
+        // from the client-supplied name or extension.
+        try {
+            $image = $reencoder->reencode((string) $file->getRealPath());
+        } catch (UnreadableImageException) {
+            throw ValidationException::withMessages([
+                'file' => 'The file could not be read as an image.',
+            ]);
+        }
+
+        // e.g. uploads/<40 random letters and digits>.png on the "public" disk.
+        $path = 'uploads/'.Str::random(40).'.'.$image['extension'];
+
+        if (! Storage::disk('public')->put($path, $image['contents'])) {
+            throw new RuntimeException('The uploaded image could not be stored.');
+        }
 
         return $this->sendResponse([
             'path' => $path,

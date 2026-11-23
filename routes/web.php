@@ -13,6 +13,7 @@ Route::get('/home', fn () => redirect('/dashboard'))->name('home');
 
 // Vue SPA catch-all (must stay last). API/OAuth paths are excluded so unknown
 // endpoints there return JSON 404s instead of the SPA shell / login redirect.
+// Unverified accounts are redirected to /email/verify.
 Route::view('/{vue_capture?}', 'home')
     ->where('vue_capture', '(?!(?:api|oauth)(?:/|$))[\/\w\.-]*')
-    ->middleware('auth');
+    ->middleware(['auth', 'verified']);

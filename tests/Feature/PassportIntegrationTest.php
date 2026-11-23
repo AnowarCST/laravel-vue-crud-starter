@@ -17,7 +17,7 @@ class PassportIntegrationTest extends TestCase
         $user = User::factory()->create();
 
         $page = $this->actingAs($user)->get('/dashboard')->assertOk()->assertCookie(Passport::cookie());
-        $jwt = $page->getCookie(Passport::cookie())->getValue();
+        $jwt = (string) $page->getCookie(Passport::cookie())?->getValue();
         $csrf = session()->token();
 
         // Fresh application state: authenticate purely via the cookie.
@@ -52,8 +52,8 @@ class PassportIntegrationTest extends TestCase
         app(ClientRepository::class)->createPersonalAccessGrantClient('Personal Access Client', 'users');
         $user = User::factory()->create();
 
-        $token = $this->actingAs($user)->postJson('/oauth/personal-access-tokens', ['name' => 'cli'])
-            ->assertOk()->json('accessToken');
+        $token = $this->jsonString($this->actingAs($user)->postJson('/oauth/personal-access-tokens', ['name' => 'cli'])
+            ->assertOk(), 'accessToken');
         $this->assertNotEmpty($token);
 
         $this->app['auth']->forgetGuards();
@@ -74,11 +74,12 @@ class PassportIntegrationTest extends TestCase
     {
         app(ClientRepository::class)->createPersonalAccessGrantClient('Personal Access Client', 'users');
         $user = User::factory()->create();
-        $result = $user->createToken('cli');
+        $tokenId = $user->createToken('cli')->getToken()?->getKey();
+        $this->assertNotNull($tokenId);
 
         $this->actingAs(User::factory()->admin()->create(), 'api')
             ->deleteJson('/api/user/'.$user->id)->assertOk();
 
-        $this->assertDatabaseHas('oauth_access_tokens', ['id' => $result->token->id, 'revoked' => true]);
+        $this->assertDatabaseHas('oauth_access_tokens', ['id' => $tokenId, 'revoked' => true]);
     }
 }

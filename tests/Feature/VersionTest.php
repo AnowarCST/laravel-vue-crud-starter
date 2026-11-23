@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class VersionTest extends TestCase
@@ -14,7 +12,7 @@ class VersionTest extends TestCase
      *
      * @return void
      */
-    public function testAppVersion()
+    public function test_app_version()
     {
         $response = $this->getJson('/api/version');
         $response
