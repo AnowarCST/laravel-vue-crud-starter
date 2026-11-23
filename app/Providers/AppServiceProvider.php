@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -29,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureProxies();
         $this->configureRateLimiting();
+
+        // Outside the local environment, /docs is limited to administrators
+        // (see App\Http\Middleware\AuthorizeApiDocs).
+        Gate::define('viewApiDocs', fn (User $user): bool => $user->isAdmin());
     }
 
     protected function configureProxies(): void
