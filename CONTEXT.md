@@ -99,7 +99,7 @@ A short orientation for contributors. For setup instructions see
 ## Guiding principles
 
 - Keep existing routes and CRUD behaviour working. Document behaviour changes
-  with upgrade and rollback steps in the README.
+  with upgrade and rollback steps in [docs/upgrading.md](docs/upgrading.md).
 - Never commit secrets. `.env.example` contains empty placeholders only.
 - Record real versions and real test results. Do not claim a check passed
   unless it was run.

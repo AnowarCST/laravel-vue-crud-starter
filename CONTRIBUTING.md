@@ -23,8 +23,9 @@ problem.** Report it privately as described in [SECURITY.md](SECURITY.md)
 
 ## Development setup
 
-Follow [README.md](README.md): "Quick start with Docker (recommended)" or
-"Installing without Docker". The commands below assume the Docker setup. If
+Follow the [README](README.md#quick-start-with-docker) ("Quick start with
+Docker"), or [docs/installation.md](docs/installation.md) to install without
+Docker. The commands below assume the Docker setup. If
 you work without Docker, run the same `composer`, `php artisan` and `npm`
 commands directly.
 
@@ -64,7 +65,7 @@ Useful to know:
   the change is needed, not only what it does.
 - If a change breaks existing installations (configuration, database,
   behaviour), say so in the commit body and add upgrade and rollback steps to
-  the README.
+  [docs/upgrading.md](docs/upgrading.md).
 - Never commit secrets. `.env` is ignored by git; `.env.example` contains
   empty placeholders only.
 
@@ -78,8 +79,7 @@ Three slower workflows are opt-in: the production image build
 (`.github/workflows/zap.yml`). A maintainer starts them on a pull request
 with the `run-docker-build`, `run-e2e` or `run-zap` label, or they run on
 every pull request when the matching repository variable is set. See
-[docs/ci-cd.md](docs/ci-cd.md) and the README sections "End-to-end tests"
-and "Security scan (ZAP)".
+[docs/ci-cd.md](docs/ci-cd.md) and [docs/testing.md](docs/testing.md).
 
 | Check | Command | Fix automatically |
 | --- | --- | --- |
@@ -103,7 +103,8 @@ docker run --rm -e REDOCLY_TELEMETRY=off -v "$PWD/docs/api":/spec:ro -w /spec \
 ### End-to-end tests
 
 The Playwright tests in `tests/e2e/` drive the real application in Chromium.
-README.md ("End-to-end tests") explains how to run them. When you write or
+[docs/testing.md](docs/testing.md#end-to-end-tests) explains how to run
+them. When you write or
 change one:
 
 - Make every test create the records it needs (through the API, with the
@@ -252,8 +253,9 @@ contribution.
       added; pages still work under the Content-Security-Policy.
 - [ ] No secrets, personal data or real credentials in code, tests, fixtures,
       screenshots or commit messages.
-- [ ] Breaking changes have upgrade and rollback steps in the README.
-- [ ] Documentation (README, ARCHITECTURE, SECURITY) is updated if
+- [ ] Breaking changes have upgrade and rollback steps in
+      [docs/upgrading.md](docs/upgrading.md).
+- [ ] Documentation (README, ARCHITECTURE, SECURITY, `docs/`) is updated if
       behaviour, configuration or setup changed.
 
 ## License

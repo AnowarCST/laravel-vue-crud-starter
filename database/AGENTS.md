@@ -18,7 +18,7 @@ described in [ARCHITECTURE.md](../ARCHITECTURE.md) ("Data model").
   `tests/Feature/Database/`, as `ProductInventoryMigrationTest` and
   `DropUnusedTablesMigrationTest` do.
 - Breaking or data-changing migrations need upgrade and rollback steps for
-  existing installations (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
+  existing installations in [docs/upgrading.md](../docs/upgrading.md).
 - The migrations do not create foreign key constraints; keep that unless the
   task is to add them.
 

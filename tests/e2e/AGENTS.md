@@ -1,8 +1,9 @@
 # AGENTS.md: end-to-end tests (`tests/e2e/`)
 
 Applies in addition to the [root AGENTS.md](../../AGENTS.md). How to run
-the tests and what the stack contains: [README.md](../../README.md)
-("End-to-end tests"). Writing rules in more detail:
+the tests and what the stack contains:
+[docs/testing.md](../../docs/testing.md#end-to-end-tests). Writing rules in
+more detail:
 [CONTRIBUTING.md](../../CONTRIBUTING.md) ("End-to-end tests").
 
 ## Running

@@ -5,7 +5,7 @@
 | Version | Supported |
 | --- | --- |
 | `main` (Laravel 13, PHP 8.5, Passport 13, Vue 3 + Vite) | Yes |
-| Laravel 8 / Vue 2 / Laravel Mix releases (before the 2026 hardening) | No. Upgrade, see [README](README.md#upgrading-from-the-laravel-8-version) |
+| Laravel 8 / Vue 2 / Laravel Mix releases (before the 2026 hardening) | No. Upgrade, see [docs/upgrading.md](docs/upgrading.md#upgrading-from-the-laravel-8-version) |
 
 Only the latest commit on `main` receives security fixes. This is a starter
 template: once you fork it, keeping your copy patched is your responsibility.

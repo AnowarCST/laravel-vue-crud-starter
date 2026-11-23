@@ -80,7 +80,7 @@ touch the MySQL data. The E2E stack is a separate throwaway stack on ports
 | `database/` | Migrations, factories, demo seeders |
 | `tests/Feature/<Area>/`, `tests/Unit/`, `tests/Concerns/` | PHPUnit tests and shared helpers |
 | `tests/e2e/` | Playwright tests and the E2E stack scripts |
-| `docs/` | OpenAPI document, CI/CD and other guides |
+| `docs/` | OpenAPI document, installation, testing, CI/CD, upgrading |
 | `docker/`, `docker-compose.yml` | Dev and prod images, local stack |
 | `.github/workflows/`, `deploy/` | CI and disabled deployment templates |
 
@@ -181,7 +181,7 @@ output; never claim a check passed without running it.
 9. If dependencies changed: `composer audit` and `npm audit` report nothing.
 10. Docs updated when behaviour, configuration or setup changed (README,
     ARCHITECTURE, SECURITY, docs/). Breaking changes get upgrade and
-    rollback steps (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+    rollback steps in [docs/upgrading.md](docs/upgrading.md).
 
 ## Git and pull requests
 

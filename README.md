@@ -3,22 +3,14 @@
 [![CI](https://github.com/AnowarCST/laravel-vue-crud-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AnowarCST/laravel-vue-crud-starter/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/AnowarCST/laravel-vue-crud-starter/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/AnowarCST/laravel-vue-crud-starter/actions/workflows/codeql.yml)
 
-## About
+A Laravel 13 + Vue 3 + AdminLTE 4 single-page application (SPA) starter with
+CRUD screens, session login with email verification, and an OAuth2 JSON API.
+It runs in Docker, is hardened by default, and comes with PHP, JavaScript and
+end-to-end tests.
 
-A simple Laravel + Vue 3 + AdminLTE single-page application (SPA) starter
-with CRUD screens, authentication and an OAuth2 API.
+![The dashboard: product, category, tag and user counts, the latest products and a low-stock list](docs/screenshots/dashboard.png)
 
-## Tech stack
-
-- PHP 8.5, Laravel 13, Laravel Passport 13 (OAuth2 / personal access tokens)
-- Vue 3 + Vue Router, built with Vite (SweetAlert2, axios)
-- AdminLTE 4 + Bootstrap 5 + Font Awesome
-- MySQL 9.7 LTS
-- Node 26 LTS (build tooling only)
-- PHPUnit tests, including security regression tests
-- Pint and Larastan (PHP), ESLint and Prettier (JavaScript and Vue)
-- Docker (Apache + mod_php) for development and production, Mailpit for
-  local email
+![The products page: search, filters and sorting above a list of products with photo, SKU, category, tags, stock, status and price](docs/screenshots/products.png)
 
 ## Features
 
@@ -33,9 +25,22 @@ with CRUD screens, authentication and an OAuth2 API.
 - Categories and tags (admin only in the menu)
 - Role-based access control (admin and user) on the API and in the UI
 - Developer page for OAuth clients and personal access tokens
+- API documentation in Swagger UI at `/docs`
 - Hardened by default, see [SECURITY.md](SECURITY.md)
 
-## Quick start with Docker (recommended)
+## Tech stack
+
+- PHP 8.5, Laravel 13, Laravel Passport 13 (OAuth2 / personal access tokens)
+- Vue 3 + Vue Router, built with Vite (SweetAlert2, axios)
+- AdminLTE 4 + Bootstrap 5 + Font Awesome
+- MySQL 9.7 LTS
+- Node 26 LTS (build tooling only)
+- PHPUnit, Playwright and an OWASP ZAP baseline scan
+- Pint and Larastan (PHP), ESLint and Prettier (JavaScript and Vue)
+- Docker (Apache + mod_php) for development and production, Mailpit for
+  local email
+
+## Quick start with Docker
 
 Requirements: Docker Engine 24+ with Docker Compose v2.
 
@@ -46,215 +51,85 @@ cp .env.example .env
 ```
 
 Edit `.env` and set **strong, different** values for `DB_PASSWORD` and
-`DB_ROOT_PASSWORD`. You can generate them with `openssl rand -base64 32`.
-Compose refuses to start while they are empty. On Linux, also set
-`HOST_UID`/`HOST_GID` to the output of `id -u`/`id -g`.
+`DB_ROOT_PASSWORD` (for example with `openssl rand -base64 32`). On Linux,
+also set `HOST_UID`/`HOST_GID` to the output of `id -u`/`id -g`.
 
 ```bash
-docker compose up -d --build                          # app, MySQL and Mailpit
-docker compose exec app composer install              # already run on first start; safe to repeat
+docker compose up -d --build            # app, MySQL and Mailpit
+# The first start installs the PHP dependencies. Wait until the app answers:
+docker compose exec app sh -c 'until curl -so /dev/null http://127.0.0.1:8080/up; do sleep 3; done'
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
 docker compose exec app php artisan passport:keys
-docker compose exec app php artisan passport:client --personal --no-interaction   # for the Developer > Personal Access Tokens page
+docker compose exec app php artisan passport:client --personal --no-interaction
 docker compose exec app php artisan storage:link
-docker compose exec app php artisan app:create-admin  # prompts for email, name and password
-```
-
-Front-end assets:
-
-```bash
-docker compose --profile dev up -d node   # Vite dev server with hot reload on http://localhost:5173
-# or build once without the dev server:
 docker compose --profile dev run --rm node sh -c "npm ci && npm run build"
 ```
 
-Open <http://localhost:8000> (change `APP_PORT` in `.env` to use another port).
+Open <http://localhost:8000>. Emails (verification, password reset) are
+caught by Mailpit at <http://localhost:8025>. For hot reload, run the Vite
+dev server instead of the build: `docker compose --profile dev up -d node`.
 
-Optional demo data: an everyday retail catalogue with 6 categories, 8 tags
-and 14 products, each with an original illustration. It creates no user
-accounts, and running it again does not add duplicates or change existing
-rows:
+Optional demo data (6 categories, 8 tags and 14 products, no user
+accounts): `docker compose exec app php artisan db:seed`.
 
-```bash
-docker compose exec app php artisan db:seed
-```
+Ports, the database client port, the Vite dev server, installing without
+Docker and the production image are described in
+[docs/installation.md](docs/installation.md).
 
-Notes:
+## First admin account
 
-- Every email the app sends (account verification, password reset) is caught
-  by Mailpit. Read it at <http://localhost:8025> (`MAILPIT_PORT`).
-- Self-registered accounts must verify their email address before they can use
-  the dashboard. Accounts created with `app:create-admin` or by an
-  administrator are verified automatically.
-- To use another port for the Vite dev server, set `VITE_PORT` in `.env`
-  before starting the `node` service.
-- All ports bind to `127.0.0.1` only. MySQL is not published. To reach it
-  from a GUI client, start the stack with
-  `docker compose -f docker-compose.yml -f docker-compose.db-port.yml up -d`
-  and connect to `127.0.0.1:${DB_FORWARD_PORT:-3307}`.
-- The `node` container keeps its Linux `node_modules` in a Docker volume. Your
-  host's `node_modules` is never used inside the container.
-- Health check: `curl http://localhost:8000/up`.
-
-## Installing without Docker
-
-Requirements:
-
-- PHP 8.5 with `gd` (built with JPEG, PNG and WebP support), `pdo_mysql`,
-  `sodium`, `fileinfo`, `mbstring`, `openssl`, `dom` and `tokenizer`
-  (`composer check-platform-reqs` lists anything missing)
-- Composer 2
-- Node 26 LTS and npm
-- MySQL 9.7 LTS (8.4 LTS also works)
-- A way to receive email: run Mailpit locally, or set `MAIL_MAILER=log` to
-  write emails (including verification links) to `storage/logs/laravel.log`
+There is no default account and no seeded password. Create the first
+administrator interactively; the command asks for the email address, name
+and password:
 
 ```bash
-cp .env.example .env          # set DB_HOST=127.0.0.1, your DB credentials and MAIL_* settings
-composer install
-php artisan key:generate
-php artisan migrate
-php artisan passport:keys
-php artisan passport:client --personal --no-interaction
-php artisan storage:link
-php artisan app:create-admin
-npm ci
-npm run dev                   # or: npm run build
-php artisan serve
+docker compose exec app php artisan app:create-admin
 ```
 
-Point a production web server at `public/` only.
+Accounts created this way are verified. Accounts that sign up through the
+registration form are regular users and must verify their email address.
 
-## Production image
+## Everyday commands
 
-```bash
-docker build -f docker/Dockerfile --target prod -t laravel-vue-crud-starter:prod .
-```
-
-The image includes production Composer dependencies and the built Vite
-assets. It does not include Composer, Node or git. Apache runs as `www-data` on
-port 8080, and the image has a `HEALTHCHECK` on `/up`. Provide configuration as
-environment variables (never bake `.env` into the image). Mount `storage/` on a
-persistent volume, and run migrations explicitly after taking a backup:
-
-```bash
-docker exec <container> php artisan migrate --force
-```
-
-See the production checklist in [SECURITY.md](SECURITY.md#production-checklist).
-
-## Tests and code quality
-
-```bash
-docker compose exec app php artisan test
-# or a single suite
-docker compose exec app php artisan test --testsuite=Feature
-```
-
-Tests always use an in-memory SQLite database and never touch your MySQL data.
-
-| Check | Command |
+| Task | Command |
 | --- | --- |
+| Run the PHP tests | `docker compose exec app php artisan test` |
 | PHP code style (Pint) | `docker compose exec app composer lint` (fix: `composer format`) |
 | PHP static analysis (Larastan, level 9) | `docker compose exec app composer analyse` |
 | JavaScript and Vue lint (ESLint) | `docker compose --profile dev run --rm node npm run lint` (fix: `npm run lint:fix`) |
 | JavaScript and Vue formatting (Prettier) | `docker compose --profile dev run --rm node npm run format:check` (fix: `npm run format`) |
+| Production build (Vite) | `docker compose --profile dev run --rm node npm run build` |
 | Dependency audits | `docker compose exec app composer audit` and `docker compose --profile dev run --rm node npm audit` |
-| End-to-end tests (Playwright) | `tests/e2e/setup/start-stack.sh`, then `tests/e2e/setup/run-tests.sh` (see [End-to-end tests](#end-to-end-tests)) |
 
-Without Docker, run the same `composer` and `npm` commands directly. CI runs
-all of these, plus a production Vite build and a production Docker build (see
-`.github/workflows/ci.yml`). The end-to-end tests run in their own workflow,
-`.github/workflows/e2e.yml`.
+Tests use an in-memory SQLite database and never touch your MySQL data. With
+Node 26 on your machine, you can run the `npm` commands directly. More
+options, the OpenAPI lint and the ZAP scan are in
+[docs/testing.md](docs/testing.md).
 
-## End-to-end tests
+### End-to-end tests
 
-The Playwright tests in `tests/e2e/` use Chromium to sign in, manage users,
-products, categories and tags, upload a product photo, search and filter the
-product list, check the dashboard counts, register and verify a new account
-(using the email caught by Mailpit), manage personal access tokens and open
-the API documentation. Every test also fails if a page reports a
-Content-Security-Policy violation or an uncaught JavaScript error.
-
-They run against a throwaway stack: the production Docker image, MySQL (data
-kept in memory only) and Mailpit. It does not touch your development
-database. Each run generates new random secrets and test accounts and stores
-them in `tests/e2e/.stack/` (ignored by git). The stack loads the demo
-catalogue, but the tests create their own records and do not depend on it.
-
-Requirements: Docker with Docker Compose v2, Node 26, and the project's npm
-packages (`npm ci`). The stack publishes the app on `127.0.0.1:8080` and
-Mailpit on `127.0.0.1:8125`, so those ports must be free. The first run
-downloads the Playwright image (`mcr.microsoft.com/playwright:v1.65.0-noble`)
-and builds the production image, which needs several GB of free Docker disk
-space.
+The Playwright tests in `tests/e2e/` run in Chromium against a throwaway
+stack (the production image, MySQL and Mailpit on ports 8080 and 8125),
+never against your development database:
 
 ```bash
 npm ci
-tests/e2e/setup/start-stack.sh                       # build the prod image, start the stack, migrate, seed, create test accounts
-tests/e2e/setup/run-tests.sh                         # run every test in the Playwright image
-tests/e2e/setup/run-tests.sh tests/e2e/auth.spec.js  # or only some files (arguments go to `playwright test`)
-tests/e2e/setup/stop-stack.sh                        # remove the containers, volumes and generated secrets
+tests/e2e/setup/start-stack.sh    # build the prod image, start the stack, create test accounts
+tests/e2e/setup/run-tests.sh      # run the tests in the Playwright Docker image
+tests/e2e/setup/stop-stack.sh     # remove the stack and its generated secrets
 ```
 
-`start-stack.sh` reads these optional environment variables: `E2E_PROJECT`
-(Compose project name, default `lvcs-e2e`), `E2E_APP_PORT` (default `8080`),
-`E2E_MAILPIT_PORT` (default `8125`), `E2E_IMAGE` (default `lvcs-e2e:local`)
-and `E2E_SKIP_BUILD=1` (use an image you already built). `run-tests.sh` only
-works with `E2E_APP_PORT=8080`. With another port, run Playwright on your
-machine instead: `npx playwright install chromium`, then `npm run test:e2e`
-(or `npm run test:e2e:ui` for the interactive mode).
-
-The HTML report is written to `tests/e2e/playwright-report/` and failure
-traces to `tests/e2e/test-results/`. Both can contain the test accounts'
-passwords for that run, so do not share them outside your team. The stack
-sets `API_DOCS_ENABLED=true` so the `/docs` tests can run; because it uses
-`APP_ENV=production`, only administrators can open `/docs` there.
-
-Two limits matter if you add tests. The app allows 10 login attempts per
-minute per IP address, so wait a minute before starting a second full run.
-The API allows 60 requests per minute per account, so the tests reuse saved
-sessions and spread their requests over two administrator accounts and one
-regular user. One test is marked with `test.fail()` on purpose: it shows a
-known bug (changing your own password also signs out the current session)
-and will start failing, as an unexpected pass, once the bug is fixed.
-
-In CI, `.github/workflows/e2e.yml` runs the same scripts on every pull request
-and on pushes to `main`, and uploads the report as the `playwright-report`
-artifact.
-
-## Security scan (ZAP)
-
-`.github/workflows/zap.yml` runs an [OWASP ZAP](https://www.zaproxy.org/)
-baseline scan against the same throwaway stack. ZAP crawls the signed-out
-pages and checks the responses passively; it does not attack the
-application. The scan runs every Monday, when started by hand from the
-**Actions** tab (**ZAP baseline**, then **Run workflow**), and on pull
-requests to `main` that change code or configuration that shapes HTTP
-responses (for example `app/`, `config/`, `routes/`, `docker/` or
-`.zap/`).
-
-`.zap/rules.tsv` sets what each finding does. Rules set to `FAIL` cover
-protections the app has today, such as the clickjacking and
-`X-Content-Type-Options` headers, the Content-Security-Policy, SameSite
-cookies and CSRF tokens on forms, so a match means a regression and fails
-the job. Rules set to `IGNORE` are false positives that were checked by hand;
-the file explains each one. All other findings are listed in the job log and
-in the `zap-baseline-report` artifact without failing the job.
+Requirements, options, rate limits and reports are described in
+[docs/testing.md](docs/testing.md#end-to-end-tests).
 
 ## API documentation
 
 [docs/api/openapi.yaml](docs/api/openapi.yaml) describes every `/api`
-endpoint in OpenAPI 3.1: authentication (bearer token or the dashboard's
-session cookie), request bodies, query parameters, responses and errors.
-`php artisan test` includes `OpenApiDocumentTest`, which fails if an `/api`
-route is missing from the document or the document lists an operation that
-has no route.
-
-The application shows the document in Swagger UI at `/docs` (for example
-<http://localhost:8000/docs>) and serves the file at `/docs/openapi.yaml`.
-The viewer is bundled by Vite and loads nothing from a CDN.
+endpoint in OpenAPI 3.1. The app shows it in Swagger UI at `/docs` (for
+example <http://localhost:8000/docs>) and serves the file at
+`/docs/openapi.yaml`. The viewer is bundled by Vite and loads nothing from a
+CDN.
 
 ![The API documentation at /docs, showing the Meta, Profile and Products endpoints](docs/screenshots/api-docs.png)
 
@@ -265,103 +140,54 @@ The viewer is bundled by Vite and loads nothing from a CDN.
   administrators with a verified email address can open them.
 - `API_DOCS_ENABLED=false` turns them off everywhere, including local.
 
-"Try it out" in the viewer uses your signed-in session. To use a personal
-access token instead, create one on the Developer page and enter it under
-**Authorize**.
+"Try it out" uses your signed-in session. To use a personal access token
+instead, create one on the Developer page and enter it under **Authorize**.
+`php artisan test` fails if an `/api` route is missing from the document.
 
-To check the document after changing it, lint it with
-[Redocly CLI](https://redocly.com/docs/cli/):
+## CI/CD
+
+GitHub Actions runs the PHP and frontend checks
+(`.github/workflows/ci.yml`) and CodeQL on every pull request and every push
+to `main`. The slower workflows are opt-in: the production Docker build, the
+end-to-end tests and the OWASP ZAP scan run when a maintainer adds the
+`run-docker-build`, `run-e2e` or `run-zap` label to a pull request, when
+started by hand from the **Actions** tab, or on every pull request when the
+repository variable `RUN_DOCKER_BUILD`, `RUN_E2E` or `RUN_ZAP` is `true`.
+
+`deploy/` has disabled, fully commented deployment templates: GitHub Actions
+(GitHub Container Registry, optional SSH deploy), then AWS (CodeBuild, ECR,
+ECS), then Azure (Azure Pipelines, Azure Container Registry). Nothing in
+them runs until you enable it.
+
+[docs/ci-cd.md](docs/ci-cd.md) explains when each workflow runs, how to turn
+the opt-in ones on, which checks to require, and how to enable a template.
+
+## Deployment
+
+Build the production image:
 
 ```bash
-docker run --rm -e REDOCLY_TELEMETRY=off -v "$PWD/docs/api":/spec:ro -w /spec \
-  redocly/cli:2.82.0 lint openapi.yaml
+docker build -f docker/Dockerfile --target prod -t laravel-vue-crud-starter:prod .
 ```
 
-## Upgrading from the Laravel 8 version
+It contains the production Composer dependencies and the built assets, but no
+Composer, Node or git. Apache runs as `www-data` on port 8080. Provide
+configuration as environment variables, mount `storage/` on a persistent
+volume, and run migrations yourself after a backup. Details are in
+[docs/installation.md](docs/installation.md#production-image); go through the
+[production checklist](SECURITY.md#production-checklist) before you go live.
 
-This release has breaking changes. Read all of the steps before upgrading an
-existing installation.
+## Upgrading
 
-1. **Back up the database** (for example
-   `mysqldump --single-transaction --routines -u<user> -p <database> > backup.sql`)
-   and keep a copy of `storage/`, `public/upload/` and your current image or
-   commit.
-2. **Update `.env`** against the new `.env.example`. `DB_USERNAME` must not be
-   `root`. Set `DB_ROOT_PASSWORD`. `MIX_*` and `PUSHER_*` variables are gone.
-   Laravel 11+ names include `CACHE_STORE` (was `CACHE_DRIVER`) and
-   `BROADCAST_CONNECTION`. `APP_DEBUG` now defaults to `false`.
-3. **Runtime**: PHP 8.5, MySQL 9.7 LTS (or 8.4 LTS) and Node 26 are required. The Docker stack
-   now uses a single Apache + PHP container on internal port 8080 (published as
-   `APP_PORT`, default 8000) instead of nginx + php-fpm. Adminer and the public
-   MySQL port were removed.
-4. **Laravel Mix has been replaced by Vite.** `webpack.mix.js`,
-   `public/js/app.js`, `public/css/app.css` and `mix-manifest.json` are no
-   longer used. Run `npm ci && npm run build` (assets go to `public/build`).
-5. **Registration no longer creates admins.** Every self-registered account is
-   a regular user. The seeded `admin@gmail.com` / `123456` account has been
-   removed from the seeders. Create administrators with
-   `php artisan app:create-admin`. If an old database still contains that
-   account, delete it or change its password immediately.
-6. **Passwords** must now be at least 12 characters. Existing passwords keep
-   working until they are changed.
-7. **Uploads** moved from `public/upload` to the Laravel `public` disk
-   (`storage/app/public/uploads`), served via `public/storage`. Run
-   `php artisan storage:link`. Copy any existing images you want to keep into
-   `storage/app/public/uploads/`. Only jpg, png and webp images are accepted.
-8. **Passport 13**: run `php artisan migrate` to apply the new OAuth and
-   session tables, `php artisan passport:keys` if the keys are missing, and
-   `php artisan passport:client --personal` for personal access tokens.
-   Existing tokens may need to be re-issued. Databases created by Passport 10
-   use integer client IDs: set `PASSPORT_CLIENT_UUIDS=false`, and run
-   `php artisan passport:hash` once to hash existing client secrets.
-9. **Email verification is now required** for self-registered accounts, so
-   configure `MAIL_*` with a working mail server. The migration
-   `2026_11_23_000002_mark_existing_users_as_verified` marks all existing
-   accounts as verified, so nobody is locked out by the upgrade.
-10. **Uploaded images are re-encoded** on the server. This removes metadata
-    such as EXIF and GPS data and anything hidden inside the file. Images
-    that cannot be decoded are rejected.
-11. **Products have new columns and a numeric price.** The migration
-    `2026_11_23_000003_add_inventory_fields_to_products_table` adds `sku`
-    (unique, empty for existing products), `stock` (0) and `status`
-    (`active`), and stores `price` as `decimal(10,2)`. Before converting, it
-    rewrites existing prices: values that are not numbers or are negative
-    become 0.00, and values above 99999999.99 are capped. A SKU is required
-    when creating a product. Rolling back removes the SKU, stock and status
-    values. Running `php artisan db:seed` adds the new demo catalogue but does
-    not remove the old car demo products, categories or tags, and the old car
-    photos are no longer shipped. Delete those rows in the UI if you do not
-    want them.
-12. **Unused tables are dropped.** The migration
-    `2026_11_23_000004_drop_unused_role_and_social_account_tables` drops the
-    `roles`, `role_user` and `social_accounts` tables, which no code has
-    used. If you added rows to them yourself, export those rows first.
-    Rolling the migration back recreates the tables as they were defined
-    before, but empty.
-13. **Migrate** with `php artisan migrate --force`, then
-    `php artisan optimize:clear`.
+Upgrading an installation of the Laravel 8 / Vue 2 version involves breaking
+changes. Follow the steps, including backup and rollback, in
+[docs/upgrading.md](docs/upgrading.md).
 
-**Rollback**: redeploy the previous image or commit, then restore the database
-backup taken in step 1 (`mysql ... < backup.sql`) and the saved `storage/`.
-Migrations are not guaranteed to be reversible, so restore the backup instead
-of relying on `migrate:rollback`.
+## Security
 
-**Existing Docker data**: the old stack (MySQL 8.0.17, root password
-`123456`, `mysql_native_password`) stored data in the `dbdata` volume. The new
-stack uses a fresh `db_data` volume with a non-root application user, so the
-old data is not picked up automatically. Before switching, dump it from the old
-stack (`mysqldump` as in step 1, run on the old checkout), then start the new
-stack and import it:
-`docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE"' < backup.sql`.
-Remove the old volume and its weak root password once you have verified the
-upgrade.
-
-**Docker stack already on MySQL 8.4**: the compose file now uses MySQL 9.7
-LTS. MySQL upgrades an 8.4 data directory to 9.7 automatically the first time
-the new container starts (an upgrade between two LTS releases is supported).
-Take a dump first, as in step 1, because the upgraded data directory cannot be
-opened by MySQL 8.4 again. To roll back, start a fresh `mysql:8.4` volume and
-import the dump.
+Please report vulnerabilities privately, not in a public issue. See
+[SECURITY.md](SECURITY.md) for how to report one and for the security
+measures and production checklist.
 
 ## Contributing
 
@@ -372,12 +198,8 @@ Contributions are welcome. Please read:
 - [ARCHITECTURE.md](ARCHITECTURE.md): how the application is put together;
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): the Contributor Covenant 2.1,
   which everyone taking part agrees to follow;
-- [SECURITY.md](SECURITY.md): how to report a vulnerability. Do not open a
-  public issue for security problems.
-
-## Security
-
-Please report vulnerabilities privately. See [SECURITY.md](SECURITY.md).
+- [docs/ai-assistants.md](docs/ai-assistants.md): instructions for AI coding
+  assistants ([AGENTS.md](AGENTS.md), `CLAUDE.md`, `.cursor/rules/`).
 
 ## Images
 
@@ -388,4 +210,4 @@ released under the MIT license with the rest of the code. Their sources are in
 
 ## License
 
-[MIT license](https://opensource.org/licenses/MIT).
+[MIT license](LICENSE).
