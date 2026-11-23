@@ -29,7 +29,9 @@ flowchart LR
     V -->|"/api/* + laravel_token cookie + X-CSRF-TOKEN"| A["/api routes<br/>auth:api, verified, throttle:api"]
     C[API client] -->|"/api/* + Bearer token"| A
     A --> K["API V1 controllers<br/>Form Requests + policies"]
+    K --> X["Actions<br/>(multi-step writes)"]
     K --> D[(MySQL)]
+    X --> D
 ```
 
 ### Signing in (web session)
@@ -156,6 +158,7 @@ flowchart LR
 
 | Path | Contents |
 | --- | --- |
+| `app/Actions/` | Single-purpose classes for writes that take more than one step: `Products/CreateProduct`, `Products/UpdateProduct`, `Products/SyncProductTags`, `Products/StoreProductImage`, `Users/CreateUser`, `Profile/UpdateProfile`, `Profile/ChangePassword`. |
 | `app/Console/Commands/CreateAdmin.php` | `php artisan app:create-admin`, the only way to create the first administrator (interactive). |
 | `app/Http/Controllers/Api/V1/` | API controllers. |
 | `app/Http/Resources/` | API Resources: the fields of each record in API responses. |
@@ -163,11 +166,11 @@ flowchart LR
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
 | `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
-| `app/Http/Requests/` | Form Requests: `Products/ProductRequest`, `Products/ProductIndexRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
+| `app/Http/Requests/` | Form Requests: `Categories/CategoryRequest`, `Tags/TagRequest`, `Products/ProductRequest`, `Products/ProductIndexRequest`, `Products/ProductImageRequest`, `Users/UserRequest`, `Users/ProfileUpdateRequest`, `Users/ChangePasswordRequest`. |
 | `app/Enums/` | `UserType` (`admin`, `user`) and `ProductStatus` (`active`, `draft`, `archived`). |
 | `app/Models/` | `User`, `Product`, `Category`, `Tag`. |
-| `app/Policies/` | One policy per model, found by Laravel's naming convention. |
-| `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate. |
+| `app/Policies/` | One policy per model, linked to it with `#[UsePolicy]` on the model. |
+| `app/Providers/AppServiceProvider.php` | Passport settings, rate limiters, trusted proxies, the `viewApiDocs` gate, the password rule (`Password::defaults()`). |
 | `app/Rules/PasswordByteLength.php` | Rejects passwords longer than 72 bytes (the bcrypt limit). |
 | `app/Support/ImageReencoder.php` | Decodes and re-encodes uploaded images with GD. |
 | `bootstrap/app.php` | Routing, middleware and exception handling setup. |
@@ -190,8 +193,9 @@ flowchart LR
 - **Account types.** `users.type` is `admin` or `user`, cast to the
   `App\Enums\UserType` enum (`UserType::Admin`, `UserType::User`;
   `User::isAdmin()`). `type` is not mass assignable. It is
-  only set by `RegisterController` (always `user`), by
-  `UserController` (administrators), and by `app:create-admin`.
+  only set through `App\Actions\Users\CreateUser`, by
+  `RegisterController` (always `user`), `UserController` (administrators)
+  and `app:create-admin`, and on update by `UserController`.
 - **Policies** (`app/Policies/`):
 
   | Policy | View, create, update | Delete |
@@ -199,12 +203,17 @@ flowchart LR
   | `ProductPolicy`, `CategoryPolicy`, `TagPolicy` | Any account | Administrators |
   | `UserPolicy` | Administrators | Administrators, but not their own account |
 
-  Controllers call `$this->authorize()` for create, update and delete.
-  `UserController` checks `viewAny` before it looks up an account, and
-  `UserRequest::authorize()` does the same for create and update, so a
-  non-administrator gets `403` and cannot probe which ids exist. Category,
-  product and tag `index`/`show` actions do not call the policy; every
-  verified account may read them.
+  Create and update are authorized in the Form Requests
+  (`CategoryRequest`, `TagRequest`, `ProductRequest`, `ProductImageRequest`,
+  `UserRequest`), delete in the controllers with `$this->authorize()`.
+  Category, product and tag routes use route model binding, so an unknown id
+  returns `404`. `bootstrap/app.php` runs the `verified` middleware before
+  route model binding, so an unverified account gets `403` either way.
+  `UserController` does not use route model binding: it checks `viewAny`
+  before it looks up an account, and `UserRequest::authorize()` does the same
+  for create and update, so a non-administrator gets `403` and cannot probe
+  which ids exist. Category, product and tag `index`/`show` actions do not
+  call the policy; every verified account may read them.
 - **Other rules.** `UserRequest` stops administrators from changing their
   own `type`. `ProfileUpdateRequest` only accepts `name` and `email`.
 - **Gates.** `viewApiDocs` (administrators) protects `/docs` outside the
@@ -236,7 +245,7 @@ Details and operational advice are in [SECURITY.md](SECURITY.md).
 - **CSRF.** Web forms use Laravel's CSRF protection. API requests that
   authenticate with the `laravel_token` cookie must send the CSRF token.
 - **Passwords and tokens.** Passwords are 12 to 72 characters and at most 72
-  bytes. Changing a password (profile, administrator, or reset) rotates the
+  bytes (`Password::defaults()`, set in `AppServiceProvider`). Changing a password (profile, administrator, or reset) rotates the
   remember token and revokes every OAuth access and refresh token of the
   account (`User::booted()`). Because of `authenticateSessions()` in
   `bootstrap/app.php`, browser sessions that signed in with the old password

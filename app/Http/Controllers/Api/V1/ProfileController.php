@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Profile\ChangePassword;
+use App\Actions\Profile\UpdateProfile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\ChangePasswordRequest;
 use App\Http\Requests\Users\ProfileUpdateRequest;
@@ -21,31 +23,17 @@ class ProfileController extends Controller
         return ApiResponse::success(new UserResource($user), 'User Profile');
     }
 
-    public function updateProfile(ProfileUpdateRequest $request, #[CurrentUser] User $user): ApiResponse
+    public function updateProfile(ProfileUpdateRequest $request, #[CurrentUser] User $user, UpdateProfile $updateProfile): ApiResponse
     {
-        $user->fill($request->safe()->only(['name', 'email']));
-
-        // A new address must be verified again before the account can keep
-        // using the SPA and the API.
-        $emailChanged = $user->isDirty('email');
-        if ($emailChanged) {
-            $user->forceFill(['email_verified_at' => null]);
-        }
-
-        $user->save();
-
-        if ($emailChanged) {
-            $user->sendEmailVerificationNotification();
-        }
+        $validated = $request->safe();
+        $updateProfile->handle($user, $validated->string('name')->value(), $validated->string('email')->value());
 
         return ApiResponse::success(new UserResource($user), 'Profile has been updated');
     }
 
-    public function changePassword(ChangePasswordRequest $request, #[CurrentUser] User $user): ApiResponse
+    public function changePassword(ChangePasswordRequest $request, #[CurrentUser] User $user, ChangePassword $changePassword): ApiResponse
     {
-        // The "hashed" cast hashes the value; the User model then rotates the
-        // remember token and revokes all OAuth tokens for this account.
-        $user->update(['password' => $request->validated('new_password')]);
+        $changePassword->handle($user, $request->safe()->string('new_password')->value());
 
         return ApiResponse::success([], 'Password Has been updated');
     }

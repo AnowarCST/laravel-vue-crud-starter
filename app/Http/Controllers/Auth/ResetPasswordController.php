@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Rules\PasswordByteLength;
 use Illuminate\Foundation\Auth\ResetsPasswords;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class ResetPasswordController extends Controller
@@ -38,7 +38,7 @@ class ResetPasswordController extends Controller
         return [
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed', new PasswordByteLength],
+            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
         ];
     }
 

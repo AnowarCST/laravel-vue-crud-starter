@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Categories\CategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Category;
-use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
@@ -26,46 +26,30 @@ class CategoryController extends Controller
         return ApiResponse::success(Category::pluck('name', 'id'), 'Category list');
     }
 
-    public function show(string $id): ApiResponse
+    public function show(Category $category): ApiResponse
     {
-        return ApiResponse::success(new CategoryResource(Category::findOrFail($id)), 'Category Details');
+        return ApiResponse::success(new CategoryResource($category), 'Category Details');
     }
 
-    public function store(Request $request): ApiResponse
+    public function store(CategoryRequest $request): ApiResponse
     {
-        $this->authorize('create', Category::class);
-
-        $category = Category::create($this->validated($request));
+        $category = Category::create($request->validated());
 
         return ApiResponse::success(new CategoryResource($category), 'Category Created Successfully');
     }
 
-    public function update(Request $request, string $id): ApiResponse
+    public function update(CategoryRequest $request, Category $category): ApiResponse
     {
-        $record = Category::findOrFail($id);
-        $this->authorize('update', $record);
-        $record->update($this->validated($request));
+        $category->update($request->validated());
 
-        return ApiResponse::success(new CategoryResource($record), 'Category Information has been updated');
+        return ApiResponse::success(new CategoryResource($category), 'Category Information has been updated');
     }
 
-    public function destroy(string $id): ApiResponse
+    public function destroy(Category $category): ApiResponse
     {
-        $record = Category::findOrFail($id);
-        $this->authorize('delete', $record);
-        $record->delete();
+        $this->authorize('delete', $category);
+        $category->delete();
 
-        return ApiResponse::success(new CategoryResource($record), 'Category has been Deleted');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validated(Request $request): array
-    {
-        return $this->validate($request, [
-            'name' => ['required', 'string', 'max:191'],
-            'description' => ['nullable', 'string', 'max:1000'],
-        ]);
+        return ApiResponse::success(new CategoryResource($category), 'Category has been Deleted');
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Users\CreateUser;
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\UserRequest;
 use App\Http\Resources\UserResource;
@@ -11,7 +13,9 @@ use App\Models\User;
 /**
  * Administrator-only account management (see App\Policies\UserPolicy).
  * Authorization is always checked before an account is looked up so that
- * non-administrators cannot probe which user ids exist.
+ * non-administrators cannot probe which user ids exist. That is why these
+ * actions take the id instead of using route model binding, which would
+ * look the account up (and answer 404) before any policy check.
  */
 class UserController extends Controller
 {
@@ -25,14 +29,19 @@ class UserController extends Controller
         return ApiResponse::success($users, 'Users list');
     }
 
-    public function store(UserRequest $request): ApiResponse
+    public function store(UserRequest $request, CreateUser $createUser): ApiResponse
     {
-        $data = $request->validated();
+        $validated = $request->safe();
 
         // The administrator chose this address, so the account does not have
         // to go through the self-registration email verification step.
-        $user = new User($request->safe()->only(['name', 'email', 'password']));
-        $user->forceFill(['type' => $data['type'], 'email_verified_at' => now()])->save();
+        $user = $createUser->handle(
+            name: $validated->string('name')->value(),
+            email: $validated->string('email')->value(),
+            password: $validated->string('password')->value(),
+            type: $validated->enum('type', UserType::class) ?? UserType::User,
+            markEmailAsVerified: true,
+        );
 
         return ApiResponse::success(new UserResource($user), 'User Created Successfully');
     }
@@ -49,16 +58,7 @@ class UserController extends Controller
     public function update(UserRequest $request, string $id): ApiResponse
     {
         $user = $request->target();
-
-        $attributes = $request->safe()->only(['name', 'email']);
-        if (filled($request->validated('password'))) {
-            $attributes['password'] = $request->validated('password');
-        }
-        if ($request->has('type')) {
-            $attributes['type'] = $request->validated('type');
-        }
-
-        $user->forceFill($attributes)->save();
+        $user->forceFill($request->accountChanges())->save();
 
         return ApiResponse::success(new UserResource($user), 'User Information has been updated');
     }

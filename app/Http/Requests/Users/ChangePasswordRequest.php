@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Users;
 
-use App\Rules\PasswordByteLength;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class ChangePasswordRequest extends FormRequest
 {
@@ -19,7 +19,7 @@ class ChangePasswordRequest extends FormRequest
     {
         return [
             'current_password' => ['required', 'string', 'current_password:api'],
-            'new_password' => ['required', 'string', 'min:12', 'max:72', 'different:current_password', new PasswordByteLength],
+            'new_password' => ['required', 'string', Password::defaults(), 'different:current_password'],
             'confirm_password' => ['required', 'string', 'same:new_password'],
         ];
     }

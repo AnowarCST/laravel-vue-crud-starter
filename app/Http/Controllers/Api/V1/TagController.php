@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tags\TagRequest;
 use App\Http\Resources\TagResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Tag;
-use Illuminate\Http\Request;
 
 class TagController extends Controller
 {
@@ -29,41 +29,30 @@ class TagController extends Controller
         return ApiResponse::success($tags, 'Tag list');
     }
 
-    public function show(string $id): ApiResponse
+    public function show(Tag $tag): ApiResponse
     {
-        return ApiResponse::success(new TagResource(Tag::findOrFail($id)), 'Tag Details');
+        return ApiResponse::success(new TagResource($tag), 'Tag Details');
     }
 
-    public function store(Request $request): ApiResponse
+    public function store(TagRequest $request): ApiResponse
     {
-        $this->authorize('create', Tag::class);
+        $tag = Tag::create($request->validated());
 
-        return ApiResponse::success(new TagResource(Tag::create($this->validated($request))), 'Tag Created Successfully');
+        return ApiResponse::success(new TagResource($tag), 'Tag Created Successfully');
     }
 
-    public function update(Request $request, string $id): ApiResponse
+    public function update(TagRequest $request, Tag $tag): ApiResponse
     {
-        $record = Tag::findOrFail($id);
-        $this->authorize('update', $record);
-        $record->update($this->validated($request));
+        $tag->update($request->validated());
 
-        return ApiResponse::success(new TagResource($record), 'Tag Information has been updated');
+        return ApiResponse::success(new TagResource($tag), 'Tag Information has been updated');
     }
 
-    public function destroy(string $id): ApiResponse
+    public function destroy(Tag $tag): ApiResponse
     {
-        $record = Tag::findOrFail($id);
-        $this->authorize('delete', $record);
-        $record->delete();
+        $this->authorize('delete', $tag);
+        $tag->delete();
 
-        return ApiResponse::success(new TagResource($record), 'Tag has been Deleted');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validated(Request $request): array
-    {
-        return $this->validate($request, ['name' => ['required', 'string', 'max:191']]);
+        return ApiResponse::success(new TagResource($tag), 'Tag has been Deleted');
     }
 }

@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\ProductStatus;
+use App\Policies\ProductPolicy;
 use Database\Factories\ProductFactory;
+use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
+#[UsePolicy(ProductPolicy::class)]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */

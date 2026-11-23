@@ -138,10 +138,10 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    Never make a privilege-bearing column (such as `users.type`) mass
    assignable. Add a factory in `database/factories/` for the tests.
 
-2. **Policy.** Create `app/Policies/WidgetPolicy.php`. Laravel finds it by
-   name, so no registration is needed. Follow the existing rule unless you
-   have a reason not to: any verified account may view, create and update,
-   and only administrators may delete.
+2. **Policy.** Create `app/Policies/WidgetPolicy.php` and link it to the
+   model with `#[UsePolicy(WidgetPolicy::class)]` on the `Widget` class.
+   Follow the existing rule unless you have a reason not to: any verified
+   account may view, create and update, and only administrators may delete.
 
    ```php
    public function delete(User $user, Widget $widget): bool
@@ -150,10 +150,12 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    }
    ```
 
-3. **Form Request.** Create `app/Http/Requests/Widgets/WidgetRequest.php`.
-   `authorize()` only checks that there is a user; the controller does the
-   per-record policy check. Give every string a `max` length, and validate
-   types strictly (for example `integer` and `exists:` for foreign keys).
+3. **Form Request.** Create `app/Http/Requests/Widgets/WidgetRequest.php`,
+   following `CategoryRequest`. `authorize()` checks the policy: `update`
+   for the bound `$this->route('widget')` model, otherwise `create`. Give
+   every string a `max` length, and validate types strictly (for example
+   `integer` and `exists:` for foreign keys, `Rule::enum()` for enum
+   columns, `Password::defaults()` for passwords).
 
 4. **Resource and controller.** Create `app/Http/Resources/WidgetResource.php`
    listing every field the API returns, and
@@ -164,12 +166,16 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
      `{success, data, message}` envelope;
    - paginate lists with
      `Widget::latest()->paginate(10)->through(fn (Widget $widget) => new WidgetResource($widget))`;
-   - look records up with `findOrFail()` so missing ids return `404`;
-   - call `$this->authorize('create', Widget::class)`,
-     `$this->authorize('update', $widget)` and
-     `$this->authorize('delete', $widget)` before changing anything;
+   - type-hint the model (`Widget $widget`) so route model binding answers
+     `404` for unknown ids. Only skip it when non-administrators must get
+     `403` for every id, as in `UserController`;
+   - create and update are authorized by the Form Request; call
+     `$this->authorize('delete', $widget)` before deleting;
    - only save validated input (`$request->validated()` or
-     `$request->safe()->only([...])`).
+     `$request->safe()->only([...])`);
+   - move writes that take more than one step (a transaction, related
+     records, files) into a class in `app/Actions/Widgets/`, as
+     `App\Actions\Products\CreateProduct` does.
 
 5. **Route.** Register the resource in `routes/api.php` **inside** the
    `auth:api` + `verified` group, for example by adding

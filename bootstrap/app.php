@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -28,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Rate limit every API route (limiter defined in AppServiceProvider).
         $middleware->throttleApi('api');
+
+        // Check the email verification before route model binding looks the
+        // record up, so unverified accounts get 403 and never learn which
+        // ids exist (404). Authentication already runs before binding.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsureEmailIsVerified::class);
 
         // Passwords must be validated exactly as typed.
         $middleware->trimStrings(except: ['new_password', 'confirm_password']);

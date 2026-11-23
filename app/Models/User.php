@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\UserType;
+use App\Policies\UserPolicy;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -19,6 +21,7 @@ use Laravel\Passport\Passport;
  * administrator or by `php artisan app:create-admin` are marked as verified
  * when they are created.
  */
+#[UsePolicy(UserPolicy::class)]
 class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */

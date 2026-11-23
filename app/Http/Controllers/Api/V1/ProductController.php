@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Products\CreateProduct;
+use App\Actions\Products\StoreProductImage;
+use App\Actions\Products\UpdateProduct;
 use App\Enums\ProductStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Products\ProductImageRequest;
 use App\Http\Requests\Products\ProductIndexRequest;
 use App\Http\Requests\Products\ProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Product;
-use App\Models\Tag;
-use App\Support\ImageReencoder;
 use App\Support\UnreadableImageException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use RuntimeException;
 
 class ProductController extends Controller
 {
@@ -100,97 +98,41 @@ class ProductController extends Controller
         });
     }
 
-    public function show(string $id): ApiResponse
+    public function show(Product $product): ApiResponse
     {
-        return ApiResponse::success(new ProductResource(Product::with('category', 'tags')->findOrFail($id)), 'Product Details');
+        return ApiResponse::success(new ProductResource($product->load('category', 'tags')), 'Product Details');
     }
 
-    public function store(ProductRequest $request): ApiResponse
+    public function store(ProductRequest $request, CreateProduct $createProduct): ApiResponse
     {
-        $this->authorize('create', Product::class);
-
-        $product = DB::transaction(function () use ($request) {
-            $product = Product::create($request->safe()->except('tags'));
-            $this->syncTags($product, $request->tagNames());
-
-            return $product;
-        });
+        $product = $createProduct->handle($request->productAttributes(), $request->tagNames() ?? []);
 
         return ApiResponse::success(new ProductResource($product), 'Product Created Successfully');
     }
 
-    public function update(ProductRequest $request, string $id): ApiResponse
+    public function update(ProductRequest $request, Product $product, UpdateProduct $updateProduct): ApiResponse
     {
-        $product = Product::findOrFail($id);
-        $this->authorize('update', $product);
-        $previousPhoto = $product->photo;
-
-        DB::transaction(function () use ($request, $product) {
-            $product->update($request->safe()->except('tags'));
-            if ($request->has('tags')) {
-                $this->syncTags($product, $request->tagNames());
-            }
-        });
-
-        // Remove the replaced upload, but only files this API created.
-        if ($previousPhoto !== $product->photo && is_string($previousPhoto)
-            && preg_match(ProductRequest::UPLOADED_PHOTO_PATTERN, $previousPhoto)
-            && ! Product::withTrashed()->where('photo', $previousPhoto)->exists()) {
-            Storage::disk('public')->delete($previousPhoto);
-        }
+        $updateProduct->handle($product, $request->productAttributes(), $request->tagNames());
 
         return ApiResponse::success(new ProductResource($product), 'Product Information has been updated');
     }
 
-    /**
-     * @param  list<string>  $names
-     */
-    private function syncTags(Product $product, array $names): void
+    public function destroy(Product $product): ApiResponse
     {
-        $ids = [];
-        foreach ($names as $name) {
-            $ids[] = Tag::firstOrCreate(['name' => $name])->id;
-        }
-        $product->tags()->sync($ids);
-    }
-
-    public function destroy(string $id): ApiResponse
-    {
-        $product = Product::findOrFail($id);
         $this->authorize('delete', $product);
         $product->delete();
 
         return ApiResponse::success(new ProductResource($product), 'Product has been Deleted');
     }
 
-    public function upload(Request $request, ImageReencoder $reencoder): ApiResponse
+    public function upload(ProductImageRequest $request, StoreProductImage $storeImage): ApiResponse
     {
-        $this->authorize('create', Product::class);
-
-        $request->validate([
-            'file' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp',
-                'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=4096,max_height=4096'],
-        ]);
-
-        $file = $request->file('file');
-
-        // Store a re-encoded copy instead of the uploaded bytes so metadata
-        // (EXIF/GPS) and anything hidden in or appended to the file is
-        // dropped. The format is detected from the file contents, never taken
-        // from the client-supplied name or extension.
         try {
-            $image = $reencoder->reencode((string) $file->getRealPath());
+            $path = $storeImage->handle($request->uploadedFile());
         } catch (UnreadableImageException) {
             throw ValidationException::withMessages([
                 'file' => 'The file could not be read as an image.',
             ]);
-        }
-
-        // e.g. uploads/<40 random letters and digits>.png on the "public" disk.
-        $path = 'uploads/'.Str::random(40).'.'.$image['extension'];
-
-        if (! Storage::disk('public')->put($path, $image['contents'])) {
-            throw new RuntimeException('The uploaded image could not be stored.');
         }
 
         return ApiResponse::success([

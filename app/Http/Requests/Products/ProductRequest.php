@@ -2,24 +2,36 @@
 
 namespace App\Http\Requests\Products;
 
+use App\Actions\Products\StoreProductImage;
 use App\Enums\ProductStatus;
 use App\Models\Product;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Create (POST /api/product) and update (PUT/PATCH /api/product/{product})
+ * of a product, authorized by ProductPolicy.
+ */
 class ProductRequest extends FormRequest
 {
-    /**
-     * Paths produced by ProductController::upload(): Str::random(40) plus the
-     * extension of the detected image format (see ImageReencoder::EXTENSIONS).
-     */
-    public const UPLOADED_PHOTO_PATTERN = '~^uploads/[A-Za-z0-9]{40}\.(jpg|jpeg|png|webp)$~';
-
     public function authorize(): bool
     {
-        // Resource-level checks happen in the controller via ProductPolicy.
-        return $this->user() !== null;
+        $product = $this->product();
+
+        return $product !== null
+            ? $this->user()?->can('update', $product) === true
+            : $this->user()?->can('create', Product::class) === true;
+    }
+
+    /**
+     * The product being updated (bound from the route), or null when creating.
+     */
+    public function product(): ?Product
+    {
+        $product = $this->route('product');
+
+        return $product instanceof Product ? $product : null;
     }
 
     /**
@@ -59,13 +71,13 @@ class ProductRequest extends FormRequest
     {
         // Products created before SKUs existed have none, so on update the
         // SKU may be left out; when it is sent it must be valid.
-        $creating = $this->route('product') === null;
+        $creating = $this->product() === null;
 
         return [
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:191'],
             'sku' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:64', 'regex:/^[A-Z0-9-]+$/',
-                Rule::unique('products', 'sku')->ignore($this->route('product'))],
+                Rule::unique('products', 'sku')->ignore($this->product())],
             'description' => ['required', 'string', 'max:1000'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'stock' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
@@ -74,7 +86,7 @@ class ProductRequest extends FormRequest
             'tags.*.text' => ['required', 'string', 'max:191'],
             'photo' => ['sometimes', 'nullable', 'string', 'max:191', function (string $attribute, mixed $value, Closure $fail): void {
                 // Non-string values are already rejected by the "string" rule.
-                if (is_string($value) && ! preg_match(self::UPLOADED_PHOTO_PATTERN, $value) && ! $this->isUnchangedPhoto($value)) {
+                if (is_string($value) && ! preg_match(StoreProductImage::PATH_PATTERN, $value) && ! $this->isUnchangedPhoto($value)) {
                     $fail('The :attribute must be an image uploaded through /api/product/upload.');
                 }
             }],
@@ -82,13 +94,28 @@ class ProductRequest extends FormRequest
     }
 
     /**
-     * Names from the validated "tags" payload, e.g. [{"text": "Bestseller"}].
+     * The validated product fields, without "tags".
      *
-     * @return list<string>
+     * @return array<string, mixed>
      */
-    public function tagNames(): array
+    public function productAttributes(): array
     {
-        $tags = $this->validated('tags', []);
+        return $this->safe()->except('tags');
+    }
+
+    /**
+     * Names from the validated "tags" payload, e.g. [{"text": "Bestseller"}],
+     * or null when "tags" was not sent.
+     *
+     * @return list<string>|null
+     */
+    public function tagNames(): ?array
+    {
+        if (! $this->safe()->has('tags')) {
+            return null;
+        }
+
+        $tags = $this->validated('tags');
         $names = [];
 
         foreach (is_array($tags) ? $tags : [] as $tag) {
@@ -108,8 +135,6 @@ class ProductRequest extends FormRequest
      */
     private function isUnchangedPhoto(string $value): bool
     {
-        $id = $this->route('product');
-
-        return $id !== null && Product::whereKey($id)->value('photo') === $value;
+        return $this->product()?->photo === $value;
     }
 }
