@@ -44,11 +44,6 @@ class Product extends Model
     ];
 
     /**
-     * @var list<string>
-     */
-    protected $appends = ['photo_url'];
-
-    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -72,7 +67,7 @@ class Product extends Model
      */
     public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class)->select(['name as text', 'id']);
+        return $this->belongsToMany(Tag::class);
     }
 
     /**

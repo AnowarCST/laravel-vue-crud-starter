@@ -123,9 +123,13 @@ flowchart LR
 - `routes/api.php` (prefix `/api`, middleware group `api`). Every route except
   `GET /api/version` uses `auth:api` and `verified`.
   `EmailVerificationTest` checks this for every API route.
-- Successful responses use `BaseController::sendResponse()`, which returns
-  `{"success": true, "data": ..., "message": "..."}`. List endpoints put a
-  Laravel paginator (10 per page) in `data`. `GET /api/product` also accepts
+- Successful responses are `App\Http\Responses\ApiResponse` objects, which
+  return `{"success": true, "data": ..., "message": "..."}` with status 200.
+  Records are serialized by the API Resources in `app/Http/Resources/`
+  (`UserResource`, `CategoryResource`, `TagResource`, `ProductResource`,
+  `ProductTagResource`), which list every field explicitly. List endpoints
+  put a Laravel paginator (10 per page) in `data`, with its items mapped to
+  resources (`->through(...)`), so the paginator fields stay the same. `GET /api/product` also accepts
   `per_page` (up to 50) and the search, filter and sort parameters described
   in [Product catalogue](#product-catalogue).
 - `bootstrap/app.php` renders exceptions as JSON for `api/*` and for requests
@@ -153,7 +157,9 @@ flowchart LR
 | Path | Contents |
 | --- | --- |
 | `app/Console/Commands/CreateAdmin.php` | `php artisan app:create-admin`, the only way to create the first administrator (interactive). |
-| `app/Http/Controllers/Api/V1/` | API controllers. `BaseController` provides the response envelope. |
+| `app/Http/Controllers/Api/V1/` | API controllers. |
+| `app/Http/Resources/` | API Resources: the fields of each record in API responses. |
+| `app/Http/Responses/ApiResponse.php` | The `{success, data, message}` envelope of successful API responses. |
 | `app/Http/Controllers/Auth/` | laravel/ui login, registration, password reset and verification controllers. |
 | `app/Http/Controllers/ApiDocsController.php` | `/docs` viewer page and `/docs/openapi.yaml`. |
 | `app/Http/Middleware/` | `SecurityHeaders` (CSP and other headers) and `AuthorizeApiDocs`. |
@@ -256,7 +262,7 @@ From `database/migrations/` and `app/Models/`:
 | `users` | `id`, `name`, `type`, `email` (unique), `email_verified_at`, `password`, `remember_token`, timestamps | Model `User`. |
 | `categories` | `id`, `name`, `description`, timestamps | Model `Category`. |
 | `tags` | `id`, `name`, timestamps | Model `Tag`. |
-| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. Appends `photo_url`. `sku` is empty only for products created before SKUs existed. |
+| `products` | `id`, `name`, `sku` (unique, nullable), `description`, `price` (`decimal(10,2)`), `stock` (unsigned integer, default 0), `status` (`active`, `draft` or `archived`, default `active`, indexed), `category_id`, `photo`, timestamps, `deleted_at` | Model `Product` (soft deletes). `price` is cast to a string with two decimals. `photo_url` is an accessor that `ProductResource` adds to responses. `sku` is empty only for products created before SKUs existed. |
 | `product_tag` | `product_id`, `tag_id` | Pivot table for products and tags. |
 | `password_resets` | `email`, `token`, `created_at` | Password reset tokens (`config/auth.php`). |
 | `oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes` | | Laravel Passport. Client ids are UUIDs unless `PASSPORT_CLIENT_UUIDS=false`. |
@@ -266,8 +272,9 @@ From `database/migrations/` and `app/Models/`:
 Relations defined in the models:
 
 - `Product` belongs to `Category` (`category_id`).
-- `Product` belongs to many `Tag` through `product_tag`. The relation selects
-  the tag name as `text`, the format the tag input in the dashboard uses.
+- `Product` belongs to many `Tag` through `product_tag`. In product
+  responses `ProductTagResource` returns the tag name as `text`, the format
+  the tag input in the dashboard uses.
 - `User` has Passport tokens (`HasApiTokens`).
 
 The migrations do not create foreign key constraints. Deleting a category

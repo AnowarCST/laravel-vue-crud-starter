@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Products\ProductIndexRequest;
 use App\Http\Requests\Products\ProductRequest;
+use App\Http\Resources\ProductResource;
+use App\Http\Responses\ApiResponse;
 use App\Models\Product;
 use App\Models\Tag;
 use App\Support\ImageReencoder;
 use App\Support\UnreadableImageException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,13 +19,13 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
-class ProductController extends BaseController
+class ProductController extends Controller
 {
     /**
      * Paginated product list with optional search, filters and sorting; see
      * ProductIndexRequest for the accepted query parameters.
      */
-    public function index(ProductIndexRequest $request): JsonResponse
+    public function index(ProductIndexRequest $request): ApiResponse
     {
         $query = Product::query()->with('category', 'tags');
 
@@ -51,14 +53,17 @@ class ProductController extends BaseController
         // do not overlap.
         $query->orderBy($column, $direction)->orderBy('id', $direction);
 
-        return $this->sendResponse($query->paginate($request->perPage())->withQueryString(), 'Product list');
+        $products = $query->paginate($request->perPage())->withQueryString()
+            ->through(fn (Product $product) => new ProductResource($product));
+
+        return ApiResponse::success($products, 'Product list');
     }
 
     /**
      * Counts for the dashboard. Low stock is 1 to Product::LOW_STOCK_THRESHOLD
      * units; out of stock is 0.
      */
-    public function stats(): JsonResponse
+    public function stats(): ApiResponse
     {
         $byStatus = Product::query()->toBase()
             ->select('status')->selectRaw('count(*) as aggregate')
@@ -66,7 +71,7 @@ class ProductController extends BaseController
 
         $count = fn (string $status): int => is_numeric($byStatus[$status] ?? null) ? (int) $byStatus[$status] : 0;
 
-        return $this->sendResponse([
+        return ApiResponse::success([
             'total' => Product::count(),
             'active' => $count('active'),
             'draft' => $count('draft'),
@@ -94,12 +99,12 @@ class ProductController extends BaseController
         });
     }
 
-    public function show(string $id): JsonResponse
+    public function show(string $id): ApiResponse
     {
-        return $this->sendResponse(Product::with('category', 'tags')->findOrFail($id), 'Product Details');
+        return ApiResponse::success(new ProductResource(Product::with('category', 'tags')->findOrFail($id)), 'Product Details');
     }
 
-    public function store(ProductRequest $request): JsonResponse
+    public function store(ProductRequest $request): ApiResponse
     {
         $this->authorize('create', Product::class);
 
@@ -110,10 +115,10 @@ class ProductController extends BaseController
             return $product;
         });
 
-        return $this->sendResponse($product, 'Product Created Successfully');
+        return ApiResponse::success(new ProductResource($product), 'Product Created Successfully');
     }
 
-    public function update(ProductRequest $request, string $id): JsonResponse
+    public function update(ProductRequest $request, string $id): ApiResponse
     {
         $product = Product::findOrFail($id);
         $this->authorize('update', $product);
@@ -133,7 +138,7 @@ class ProductController extends BaseController
             Storage::disk('public')->delete($previousPhoto);
         }
 
-        return $this->sendResponse($product, 'Product Information has been updated');
+        return ApiResponse::success(new ProductResource($product), 'Product Information has been updated');
     }
 
     /**
@@ -148,16 +153,16 @@ class ProductController extends BaseController
         $product->tags()->sync($ids);
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id): ApiResponse
     {
         $product = Product::findOrFail($id);
         $this->authorize('delete', $product);
         $product->delete();
 
-        return $this->sendResponse($product, 'Product has been Deleted');
+        return ApiResponse::success(new ProductResource($product), 'Product has been Deleted');
     }
 
-    public function upload(Request $request, ImageReencoder $reencoder): JsonResponse
+    public function upload(Request $request, ImageReencoder $reencoder): ApiResponse
     {
         $this->authorize('create', Product::class);
 
@@ -187,7 +192,7 @@ class ProductController extends BaseController
             throw new RuntimeException('The uploaded image could not be stored.');
         }
 
-        return $this->sendResponse([
+        return ApiResponse::success([
             'path' => $path,
             'url' => Storage::disk('public')->url($path),
         ], 'Image uploaded');

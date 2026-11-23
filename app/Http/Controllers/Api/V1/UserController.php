@@ -2,25 +2,30 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\UserRequest;
+use App\Http\Resources\UserResource;
+use App\Http\Responses\ApiResponse;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
 
 /**
  * Administrator-only account management (see App\Policies\UserPolicy).
  * Authorization is always checked before an account is looked up so that
  * non-administrators cannot probe which user ids exist.
  */
-class UserController extends BaseController
+class UserController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): ApiResponse
     {
         $this->authorize('viewAny', User::class);
 
-        return $this->sendResponse(User::latest()->paginate(10), 'Users list');
+        $users = User::latest()->paginate(10)
+            ->through(fn (User $user) => new UserResource($user));
+
+        return ApiResponse::success($users, 'Users list');
     }
 
-    public function store(UserRequest $request): JsonResponse
+    public function store(UserRequest $request): ApiResponse
     {
         $data = $request->validated();
 
@@ -29,19 +34,19 @@ class UserController extends BaseController
         $user = new User($request->safe()->only(['name', 'email', 'password']));
         $user->forceFill(['type' => $data['type'], 'email_verified_at' => now()])->save();
 
-        return $this->sendResponse($user, 'User Created Successfully');
+        return ApiResponse::success(new UserResource($user), 'User Created Successfully');
     }
 
-    public function show(string $id): JsonResponse
+    public function show(string $id): ApiResponse
     {
         $this->authorize('viewAny', User::class);
         $user = User::findOrFail($id);
         $this->authorize('view', $user);
 
-        return $this->sendResponse($user, 'User Details');
+        return ApiResponse::success(new UserResource($user), 'User Details');
     }
 
-    public function update(UserRequest $request, string $id): JsonResponse
+    public function update(UserRequest $request, string $id): ApiResponse
     {
         $user = $request->target();
 
@@ -55,10 +60,10 @@ class UserController extends BaseController
 
         $user->forceFill($attributes)->save();
 
-        return $this->sendResponse($user, 'User Information has been updated');
+        return ApiResponse::success(new UserResource($user), 'User Information has been updated');
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id): ApiResponse
     {
         $this->authorize('viewAny', User::class);
         $user = User::findOrFail($id);
@@ -66,6 +71,6 @@ class UserController extends BaseController
 
         $user->delete();
 
-        return $this->sendResponse([$user], 'User has been Deleted');
+        return ApiResponse::success([new UserResource($user)], 'User has been Deleted');
     }
 }

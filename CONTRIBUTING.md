@@ -155,10 +155,15 @@ same pattern. Use `ProductController`, `ProductRequest`, `ProductPolicy` and
    per-record policy check. Give every string a `max` length, and validate
    types strictly (for example `integer` and `exists:` for foreign keys).
 
-4. **Controller.** Create `app/Http/Controllers/Api/V1/WidgetController.php`
-   extending `BaseController`:
-   - wrap every result in `$this->sendResponse($data, 'Message')`;
-   - paginate lists with `Widget::latest()->paginate(10)`;
+4. **Resource and controller.** Create `app/Http/Resources/WidgetResource.php`
+   listing every field the API returns, and
+   `app/Http/Controllers/Api/V1/WidgetController.php` extending
+   `App\Http\Controllers\Controller`:
+   - return `ApiResponse::success(new WidgetResource($widget), 'Message')`
+     (`App\Http\Responses\ApiResponse`) so every result has the
+     `{success, data, message}` envelope;
+   - paginate lists with
+     `Widget::latest()->paginate(10)->through(fn (Widget $widget) => new WidgetResource($widget))`;
    - look records up with `findOrFail()` so missing ids return `404`;
    - call `$this->authorize('create', Widget::class)`,
      `$this->authorize('update', $widget)` and

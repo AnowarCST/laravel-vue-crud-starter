@@ -2,50 +2,60 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Controller;
+use App\Http\Resources\CategoryResource;
+use App\Http\Responses\ApiResponse;
 use App\Models\Category;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class CategoryController extends BaseController
+class CategoryController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): ApiResponse
     {
-        return $this->sendResponse(Category::latest()->paginate(10), 'Category list');
+        $categories = Category::latest()->paginate(10)
+            ->through(fn (Category $category) => new CategoryResource($category));
+
+        return ApiResponse::success($categories, 'Category list');
     }
 
-    public function list(): JsonResponse
+    /**
+     * Every category as an {id: name} map, for select inputs.
+     */
+    public function list(): ApiResponse
     {
-        return $this->sendResponse(Category::pluck('name', 'id'), 'Category list');
+        return ApiResponse::success(Category::pluck('name', 'id'), 'Category list');
     }
 
-    public function show(string $id): JsonResponse
+    public function show(string $id): ApiResponse
     {
-        return $this->sendResponse(Category::findOrFail($id), 'Category Details');
+        return ApiResponse::success(new CategoryResource(Category::findOrFail($id)), 'Category Details');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): ApiResponse
     {
         $this->authorize('create', Category::class);
 
-        return $this->sendResponse(Category::create($this->validated($request)), 'Category Created Successfully');
+        $category = Category::create($this->validated($request));
+
+        return ApiResponse::success(new CategoryResource($category), 'Category Created Successfully');
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(Request $request, string $id): ApiResponse
     {
         $record = Category::findOrFail($id);
         $this->authorize('update', $record);
         $record->update($this->validated($request));
 
-        return $this->sendResponse($record, 'Category Information has been updated');
+        return ApiResponse::success(new CategoryResource($record), 'Category Information has been updated');
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id): ApiResponse
     {
         $record = Category::findOrFail($id);
         $this->authorize('delete', $record);
         $record->delete();
 
-        return $this->sendResponse($record, 'Category has been Deleted');
+        return ApiResponse::success(new CategoryResource($record), 'Category has been Deleted');
     }
 
     /**
